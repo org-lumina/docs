@@ -109,10 +109,10 @@
           {
             "group": "Endpoint reference",
             "pages": [
-              "api-reference/endpoint/get",
-              "api-reference/endpoint/create",
-              "api-reference/endpoint/delete",
-              "api-reference/endpoint/webhook"
+              "api-reference/endpoint/read-policy",
+              "api-reference/endpoint/purchase-policy",
+              "api-reference/endpoint/list-products",
+              "api-reference/endpoint/create-webhook"
             ]
           },
           {
@@ -149,5 +149,11 @@
       "github": "https://github.com/org-lumina",
       "x": "https://x.com/lumina_protocol"
     }
-  }
+  },
+  "redirects": [
+    { "source": "/api-reference/endpoint/create", "destination": "/api-reference/endpoint/purchase-policy" },
+    { "source": "/api-reference/endpoint/delete", "destination": "/api-reference/endpoint/list-products" },
+    { "source": "/api-reference/endpoint/get", "destination": "/api-reference/endpoint/read-policy" },
+    { "source": "/api-reference/endpoint/webhook", "destination": "/api-reference/endpoint/create-webhook" }
+  ]
 }
