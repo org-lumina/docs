@@ -67,6 +67,7 @@
               "agents/overview",
               "agents/onboarding",
               "agents/first-policy",
+              "agents/products-and-assets",
               "agents/monitor-bonds",
               "agents/webhooks",
               "agents/strategies"
