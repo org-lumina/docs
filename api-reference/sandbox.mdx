@@ -1,0 +1,70 @@
+---
+title: 'Try-It sandbox'
+description: 'Test the Lumina API without an account or wallet.'
+---
+
+The sandbox lets you call `POST /sandbox/try` with no API key and watch a real
+on-chain policy purchase execute against a shared, server-funded wallet. It's
+the fastest way to see Lumina end-to-end before you generate keys.
+
+## Status
+
+```bash
+curl https://lumina-api-production-ac85.up.railway.app/sandbox/info
+```
+
+Response:
+
+```json
+{
+  "ok": true,
+  "enabled": true,
+  "sandboxWallet": "0x…",
+  "coverageCapUsdc": "100000000",
+  "asset": { "symbol": "USDC", "bytes32": "0x…" },
+  "defaultProductId": "0xe87625…",
+  "defaultProductName": "FLASHBTC1H-001",
+  "rateLimit": { "perIp": 10, "windowSeconds": 3600 }
+}
+```
+
+When `enabled: false`, the sandbox is disabled in the current deployment
+(usually because `SANDBOX_WALLET` is not set on the API server).
+
+## Try it
+
+```bash
+curl -X POST https://lumina-api-production-ac85.up.railway.app/sandbox/try \
+  -H "Content-Type: application/json" \
+  -d '{}'
+```
+
+Response (truncated):
+
+```json
+{
+  "ok": true,
+  "sandbox": true,
+  "policyId": "42",
+  "buyer": "0x…",
+  "coverageAmount": "100000000",
+  "premiumPaid": "1234",
+  "txHash": "0x…",
+  "blockExplorer": "https://sepolia.basescan.org/tx/0x…"
+}
+```
+
+## Limitations
+
+- **Cap**: every purchase is exactly `coverageCapUsdc` (default $100, the
+  on-chain minimum enforced by `CoverRouterV2`).
+- **Throughput**: 10 calls per IP per hour.
+- **Wallet**: the sandbox wallet is shared — bonds minted by sandbox triggers
+  are NOT yours. They live in the shared wallet for demo purposes.
+- **Network**: Base Sepolia testnet (chainId 84532) only.
+
+## Next step
+
+Once you've watched a sandbox purchase succeed, generate your own API key
+([self-service](https://www.lumina-org.com/app/agent/api-keys)) and call
+[`POST /api/v1/policies`](/api-reference/endpoint/create) directly.
