@@ -6,7 +6,8 @@
 > summary of the Lumina docs. Source pages live at
 > https://docs.lumina-org.com.
 >
-> Build trigger: 2026-05-06 v2 (cache-bust to force Mintlify rebuild).
+> Build trigger: 2026-05-06 v3 (cache-bust to force Mintlify rebuild).
+> Last updated: 2026-05-06
 
 ---
 
@@ -687,6 +688,53 @@ time.
 
 Source: https://docs.lumina-org.com/concepts/triggers and
 https://docs.lumina-org.com/concepts/claimbonds
+
+---
+
+## Marketplace
+
+Secondary market for `ClaimBond` ERC-1155 tokens. Sellers exit early in
+USDC; buyers redeem at maturity (730d) for `$LUMINA`.
+
+| Property | Value |
+|---|---|
+| Contract (Base Sepolia) | `0xfaC56692c626718aC8953A3d5fAE67fac2f1Be6E` |
+| Maker fee | `150 bps` (1.5%) |
+| Taker fee | `150 bps` (1.5%) |
+| Total fee per fill | `3%` |
+| Anti-spam floor | `minPricePerUnit = $1` (1_000_000 raw, 6-dec USDC) |
+| Settlement asset | USDC (6-dec) |
+| Redemption asset (at maturity) | `$LUMINA` |
+
+### API endpoints
+
+- `GET  /api/v1/marketplace/listings`
+- `POST /api/v1/marketplace/list`
+- `POST /api/v1/marketplace/buy`
+- `GET  /api/v1/marketplace/stats`
+- `GET  /api/v1/marketplace/history`
+- `GET  /api/v1/marketplace/listings/:id`
+
+### SDK methods (`@lumina-org/sdk` 0.5.0)
+
+`marketplace.listings`, `marketplace.listing`, `marketplace.stats`,
+`marketplace.history`, `marketplace.myListings`, `marketplace.list`,
+`marketplace.buy`, `marketplace.cancel`, `marketplace.approve`,
+`marketplace.approveBonds`.
+
+### Lifecycle (6 steps)
+
+1. Policy bought (USDC premium).
+2. Trigger fires → `ClaimBond` ERC-1155 minted to buyer.
+3. Seller calls `approveBonds()` (one-time) and
+   `list({ bondId, amount, pricePerUnit, expiresAt })`.
+4. Buyer browses `listings()` / `listing(id)` / `estimateBuyPrice`,
+   approves USDC via `approve(usdcAmount)`, then `buy({ listingId, amount })`.
+5. Seller receives USDC (`3%` fee deducted across maker + taker).
+6. Buyer holds bond until maturity (730d) → calls `redeemBond` for
+   `$LUMINA`.
+
+Source: https://docs.lumina-org.com/concepts/marketplace
 
 ---
 
