@@ -1,133 +1,50 @@
 ---
-title: "Introduction"
-description: "Welcome to the new home for your documentation"
-icon: 'star'
+title: "Lumina Protocol"
+description: "Parametric DeFi insurance built for AI agents. Programmatic policies, ERC-1155 claim bonds, and a relayer-paid UX so agents never touch gas."
+icon: "shield-halved"
 ---
 
-## Setting up
+Lumina is parametric DeFi insurance for AI agents.
 
-Get your documentation site up and running in minutes.
+- **Programmatic.** Buy a policy in one HTTP call. No KYC, no docs to sign, no broker.
+- **Relayer-paid.** Agents don't pay gas — only the USDC premium.
+- **Fair payouts.** Triggers come from a signed off-chain oracle and pay out as ERC-1155 bonds the agent can hold, redeem, or sell on the secondary market.
+- **Live.** Base Sepolia (chainId 84532) today. Base mainnet next.
 
-<Card
-  title="Start here"
-  icon="rocket"
-  href="/quickstart"
-  horizontal
->
-  Follow our three step quickstart guide.
-</Card>
-
-## Make it yours
-
-Design a docs site that looks great and empowers your users.
-
-<Columns cols={2}>
-  <Card
-    title="Edit locally"
-    icon="pen-to-square"
-    href="/development"
-  >
-    Edit your docs locally and preview them in real time.
+<CardGroup cols={2}>
+  <Card title="5-minute quickstart" icon="rocket" href="/quickstart">
+    Install the SDK, mint a key, buy a $50 policy.
   </Card>
-  <Card
-    title="Customize your site"
-    icon="palette"
-    href="/essentials/settings"
-  >
-    Customize the design and colors of your site to match your brand.
+  <Card title="For AI agents" icon="robot" href="/agents/overview">
+    The integration patterns most agents use.
   </Card>
-    <Card
-    title="Set up navigation"
-    icon="map"
-    href="/essentials/navigation"
-  >
-    Organize your docs to help users find what they need and succeed with your product.
+  <Card title="SDK reference" icon="code" href="/sdk/installation">
+    `@lumina-org/sdk` — the official TypeScript client.
   </Card>
-  <Card
-    title="API documentation"
-    icon="terminal"
-    href="/api-reference/introduction"
-  >
-    Auto-generate API documentation from OpenAPI specifications.
+  <Card title="API reference" icon="book" href="/api-reference/introduction">
+    Every endpoint, with request / response schemas.
   </Card>
-</Columns>
+</CardGroup>
 
-## Create beautiful pages
+## Why agents
 
-Everything you need to create world-class documentation.
+Most DeFi protocols are designed for humans clicking wallets. Lumina is the
+opposite: a thin REST surface, machine-readable contract addresses, and a
+sandbox a wallet-less visitor can hit on their first call.
 
-<Columns cols={2}>
-  <Card
-    title="Write with MDX"
-    icon="pen-fancy"
-    href="/essentials/markdown"
-  >
-    Use MDX to style your docs pages.
-  </Card>
-  <Card
-    title="Code samples"
-    icon="code"
-    href="/essentials/code"
-  >
-    Add sample code to demonstrate how to use your product.
-  </Card>
-  <Card
-    title="Images"
-    icon="image"
-    href="/essentials/images"
-  >
-    Display images and other media.
-  </Card>
-  <Card
-    title="Reusable snippets"
-    icon="recycle"
-    href="/essentials/reusable-snippets"
-  >
-    Write once and reuse across your docs.
-  </Card>
-</Columns>
+| Friction | Lumina answer |
+|---|---|
+| Signing every tx | Relayer signs `purchasePolicyFor` for you |
+| Gas in the agent's wallet | Relayer pays gas; agent only holds USDC |
+| Hardcoded contract addresses | `GET /health` returns the canonical set |
+| Auth onboarding | `POST /api/v1/agent/onboard` — sign one message |
+| Polling for state | Webhook subscriptions with HMAC signatures |
 
-## Make your content agent ready
+## Live status
 
-Make your docs work for humans and AI agents alike.
+```bash
+curl https://lumina-api-production-ac85.up.railway.app/health
+```
 
-<Columns cols={2}>
-  <Card
-    title="Prompt component"
-    icon="robot"
-    href="/agent-ready/prompt"
-  >
-    Embed shareable AI prompts readers can copy or open in Cursor.
-  </Card>
-  <Card
-    title="Visibility"
-    icon="eye"
-    href="/agent-ready/visibility"
-  >
-    Show different content to humans and agents reading your docs.
-  </Card>
-  <Card
-    title="Contextual menu"
-    icon="bolt"
-    href="/agent-ready/contextual"
-  >
-    Give readers one-click access to Claude, ChatGPT, Cursor, and more.
-  </Card>
-  <Card
-    title="AI coding tools"
-    icon="wand-magic-sparkles"
-    href="/ai-tools/claude-code"
-  >
-    Set up Claude Code, Cursor, or Windsurf with Mintlify's skill.
-  </Card>
-</Columns>
-
-## Need inspiration?
-
-<Card
-  title="See complete examples"
-  icon="stars"
-  href="https://mintlify.com/customers"
->
-  Browse our showcase of exceptional documentation sites.
-</Card>
+Returns the contracts you should integrate against. Always trust this over
+hardcoded addresses — a redeploy will quietly invalidate yesterday's `.env`.

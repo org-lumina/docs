@@ -1,0 +1,56 @@
+---
+title: "bonds + marketplace"
+description: "lumina.bonds + lumina.marketplace — read positions and browse listings."
+icon: "ticket"
+---
+
+## `lumina.bonds.list()`
+
+```ts
+const bonds = await lumina.bonds.list()
+//   [{ bondId, owner, amount, faceValueUsdc, pricePerBondUsdc?, maturityEpoch? }]
+```
+
+Filtered to the calling wallet. The shape is intentionally loose — fields
+beyond `bondId / owner / amount / faceValueUsdc` may be undefined depending
+on whether the API has indexed them yet.
+
+## `lumina.marketplace.listings(params?)`
+
+```ts
+const listings = await lumina.marketplace.listings({
+  limit: 50,                     // default 50
+  offset: 0,                     // default 0
+  sortBy: 'price-asc',           // 'price-asc' | 'price-desc' | 'createdAt-desc' | 'listedAt-desc'
+  maxPriceUsdc: '5000000000',    // optional; filter active listings to ≤ this price
+})
+```
+
+Returns active listings only (status='active'). To see your own listings
+that have been executed, query the on-chain marketplace directly via your
+RPC.
+
+## On-chain redeem (no SDK helper yet)
+
+The SDK doesn't currently wrap `BondVault.redeem(epochId)` — you'll need to
+call it via ethers v6 directly:
+
+```ts
+import { Contract, JsonRpcProvider, Wallet } from 'ethers'
+
+const provider = new JsonRpcProvider(process.env.RPC_URL!)
+const wallet = new Wallet(process.env.PRIVATE_KEY!, provider)
+
+const bondVaultAddress = (await lumina.health()).contracts.bondVault
+const bondVault = new Contract(
+  bondVaultAddress,
+  ['function redeem(uint256 epochId)'],
+  wallet
+)
+
+const tx = await bondVault.redeem(epochId)
+await tx.wait()
+```
+
+A `redeem()` helper is planned for SDK v0.2 — track on
+[github.com/org-lumina/lumina-sdk/issues](https://github.com/org-lumina/lumina-sdk/issues).

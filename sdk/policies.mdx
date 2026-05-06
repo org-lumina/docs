@@ -1,0 +1,67 @@
+---
+title: "policies"
+description: "lumina.policies — list, get, purchase."
+icon: "shield-halved"
+---
+
+## `lumina.policies.list()`
+
+```ts
+const policies = await lumina.policies.list()
+//   [{ policyId, productId, buyer, coverageAmount, premiumPaid, txHash, status, … }]
+```
+
+Filtered server-side to the calling wallet. Cross-wallet listing returns 403.
+
+## `lumina.policies.get(productId, policyId)`
+
+Public — no API key required.
+
+```ts
+const p = await lumina.policies.get(
+  '0xdc5bcc7d…',         // bytes32 productId
+  '42'                    // policyId
+)
+```
+
+## `lumina.policies.purchase(params)`
+
+```ts
+const receipt = await lumina.policies.purchase({
+  productId: '0x…',
+  buyer: '0x…',
+  coverageAmount: '50000000',     // string of USDC base units
+  asset: 'USDC',                  // OR a 32-byte hex string
+  idempotencyKey: 'uuid-v4',      // optional but recommended
+})
+```
+
+Returns:
+
+```ts
+{
+  txHash: '0x…',
+  blockNumber: 12345,
+  policyId: '7',
+  buyer: '0x…',
+  productId: '0x…',
+  coverageAmount: '50000000',
+  premiumPaid: '450000',         // 6-dec USDC base units
+}
+```
+
+### Asset encoding
+
+`asset: 'USDC'` is encoded to its bytes32 representation
+(`0x5553444300…0000`) for you. To bypass the encoder and pass a raw bytes32,
+provide a 32-byte hex string directly:
+
+```ts
+asset: '0x5553444300000000000000000000000000000000000000000000000000000000'
+```
+
+### Idempotency
+
+Always pass `idempotencyKey` on retryable purchases. The header value is
+forwarded as `Idempotency-Key`. Replays return the original response; no
+double-charge.

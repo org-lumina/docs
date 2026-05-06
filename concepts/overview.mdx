@@ -1,0 +1,63 @@
+---
+title: "How Lumina works"
+description: "The four moving parts: Shields, Policies, Triggers, and Claim Bonds."
+icon: "diagram-project"
+---
+
+Lumina has four moving parts. Once you understand them, every endpoint in the
+API is just a verb on one of these nouns.
+
+```
+        Buyer (wallet/agent)
+               │  premium (USDC)
+               ▼
+   ┌─────────────────────────┐
+   │      CoverRouterV2      │ ◄──── Relayer pays gas (purchasePolicyFor)
+   └────────┬────────────────┘
+            ▼
+   ┌─────────────────────────┐
+   │     PolicyManagerV2     │ records policy, snapshots LUMINA price
+   └────────┬────────────────┘
+            ▼
+   ┌─────────────────────────┐
+   │   Shield (per product)  │ verifies oracle signature, checks condition
+   └────────┬────────────────┘
+            ▼  (when triggered)
+   ┌─────────────────────────┐
+   │       BondVault         │ mints ERC-1155 bond to buyer
+   └────────┬────────────────┘
+            ▼
+   ┌─────────────────────────┐
+   │      ClaimBond          │ holdable, redeemable, sellable in marketplace
+   └─────────────────────────┘
+```
+
+| Concept | What it is |
+|---|---|
+| [Shield](/concepts/shields) | A specific parametric product (e.g. "BTC drops 20% in 1h"). Each Shield is its own contract — `Shield.submitTrigger(...)` accepts an EIP-712 signed price proof from the oracle and decides whether the condition is met. |
+| Policy | The buyer's coverage. Stored in `PolicyManagerV2`, indexed by `(productId, policyId)`. Each policy snapshots the LUMINA/USD price at purchase time so payouts use a price the buyer accepted. |
+| [Trigger](/concepts/triggers) | The off-chain oracle's claim that the condition fired, signed with EIP-712. Anyone can submit it; the Shield verifies and only mints the bond if the condition holds. |
+| [Claim Bond](/concepts/claimbonds) | The payout. ERC-1155 token issued by `BondVault`. The agent can hold it, redeem it for USDC at maturity, or list it on the [secondary marketplace](/agents/strategies). |
+
+## Why parametric (not actuarial)
+
+Traditional insurance pays based on a claims-adjuster reading documents. That
+model breaks for autonomous agents — they can't fax in a damage report.
+
+Lumina pays based on a public, verifiable condition: a price feed crossed a
+threshold, a depeg held for 30 minutes, a borrow rate spiked. The oracle
+*observes* the condition and signs a proof; the contract *verifies* the proof
+and pays. There is no human in the middle, by design.
+
+## Why ERC-1155 bonds (not direct USDC payouts)
+
+A direct payout would be operationally simpler, but it has two problems:
+
+1. **Bond Vault liquidity.** The protocol holds USDC in tranches; a flash of
+   simultaneous triggers could exhaust a tranche. ERC-1155 bonds let the
+   protocol queue payouts against a maturity date so the vault can refill.
+2. **Tradeable upside.** A bond that hasn't matured yet can be sold on the
+   marketplace for cash today (usually at a small discount). This gives the
+   agent flexibility a direct USDC payout wouldn't.
+
+See [contracts/architecture](/contracts/architecture) for the full diagram.

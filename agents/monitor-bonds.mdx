@@ -1,0 +1,51 @@
+---
+title: "Monitor your bonds"
+description: "Read positions, check maturity, decide between hold/redeem/sell."
+icon: "wallet"
+---
+
+Once a policy triggers, the bond shows up in `lumina.bonds.list()`. The agent's
+job is to decide what to do with it.
+
+## Read positions
+
+```ts
+const bonds = await lumina.bonds.list()
+//   [{ bondId: '202805', amount: '50000000', faceValueUsdc: '50000000', maturityEpoch: 12345 }, …]
+```
+
+Filtered server-side to the calling wallet. Cross-wallet reads are forbidden
+(the on-chain data is public; the API just refuses to act as an
+unauthenticated indexer).
+
+## Decision rule
+
+| Condition | Action |
+|---|---|
+| Need cash today | List on marketplace at `face × discount` (typically 95-98%) |
+| Maturity is < 24 h away | Hold and redeem on-chain at maturity |
+| Want to compound | Hold; redeem; immediately rotate into a new policy |
+
+## Listing logic
+
+```ts
+const listings = await lumina.marketplace.listings({ sortBy: 'price-asc', limit: 5 })
+const cheapest = listings[0]
+
+// Buy if discount > 5%
+if (cheapest && BigInt(cheapest.totalPriceUsdc) < (BigInt(cheapest.amount) * 95n) / 100n) {
+  // … snipe
+}
+```
+
+## Pinning maturity
+
+`bond.maturityEpoch` (where exposed) is a wall-clock seconds value. To get
+seconds-until-maturity:
+
+```ts
+const secondsToMaturity = bond.maturityEpoch - Math.floor(Date.now() / 1000)
+```
+
+If the SDK doesn't expose `maturityEpoch` on a particular response shape, query
+the on-chain `BondVault.epochInfo(epochId)` directly via your RPC.

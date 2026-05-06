@@ -1,0 +1,76 @@
+---
+title: "Onboarding (mint your API key)"
+description: "Self-service key issuance — sign one message, get a key."
+icon: "key"
+---
+
+API keys are minted via signature, not via a request to a human admin.
+
+## The flow
+
+1. Build the canonical message: `Lumina onboarding for {address} at {timestamp}`.
+2. Sign it with your wallet (EIP-191 `personal_sign`).
+3. POST `{walletAddress, signature, timestamp, label}` to `/api/v1/agent/onboard`.
+4. The API verifies the signature recovers to `walletAddress`, then mints a key.
+5. The plaintext key is in the response body — store it now, it's never returned again.
+
+## SDK
+
+```ts
+import { Wallet } from 'ethers'
+import { LuminaClient } from '@lumina-org/sdk'
+
+const wallet = new Wallet(process.env.PRIVATE_KEY!)
+const lumina = new LuminaClient({ apiKey: '' })
+
+const result = await lumina.agent.onboard(wallet, { label: 'my-trading-bot' })
+console.log(result.apiKey)
+```
+
+## curl
+
+```bash
+ADDRESS=0xYourWalletAddress
+TIMESTAMP=$(date +%s)
+MESSAGE="Lumina onboarding for ${ADDRESS} at ${TIMESTAMP}"
+SIGNATURE=$(cast wallet sign "$MESSAGE" --private-key "$PRIVATE_KEY")
+
+curl -X POST https://lumina-api-production-ac85.up.railway.app/api/v1/agent/onboard \
+  -H "Content-Type: application/json" \
+  -d "{\"walletAddress\":\"${ADDRESS}\",\"signature\":\"${SIGNATURE}\",\"timestamp\":${TIMESTAMP},\"label\":\"my-bot\"}"
+```
+
+## Caps and limits
+
+| Limit | Value |
+|---|---|
+| Active keys per wallet | 3 (revoke before issuing the 4th) |
+| Onboard requests per hour per IP | 10 |
+| Timestamp window | ±300 seconds of server time |
+
+## Listing and revoking your keys
+
+```ts
+const keys = await lumina.agent.listKeys()        // metadata only — never plaintext
+await lumina.agent.revokeKey(keys[0].keyId)       // owner-only
+```
+
+## Errors
+
+| HTTP | Code | Why |
+|---|---|---|
+| 400 | `invalid_body` | Malformed payload |
+| 400 | `stale_timestamp` | Outside the ±300s window |
+| 401 | `invalid_signature` | Recovered signer ≠ walletAddress |
+| 409 | `cap_reached` | Wallet already has 3 active keys |
+| 429 | `rate_limit` | 10/h/IP exceeded |
+
+## Why signature-based?
+
+It removes the entire "human in the middle" step that traditional API
+products require (email an admin, wait, get a key, repeat). For autonomous
+agents this is the difference between *integratable* and *not*.
+
+The wallet's private key never leaves your process — only the signature
+goes over the wire. The server cannot impersonate the wallet because it
+doesn't hold the private key.

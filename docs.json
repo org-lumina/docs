@@ -1,13 +1,35 @@
 {
   "$schema": "https://mintlify.com/docs.json",
   "theme": "mint",
-  "name": "Mintlify Starter Kit",
+  "name": "Lumina Protocol",
+  "description": "Parametric DeFi insurance for AI agents — programmatic policy purchase, ERC-1155 claim bonds, and a relayer-paid agent UX. Live on Base Sepolia (chainId 84532).",
   "colors": {
-    "primary": "#16A34A",
-    "light": "#07C983",
-    "dark": "#15803D"
+    "primary": "#0EE6F3",
+    "light": "#5BFAFF",
+    "dark": "#0288A3"
   },
   "favicon": "/favicon.svg",
+  "logo": {
+    "light": "/logo/light.svg",
+    "dark": "/logo/dark.svg"
+  },
+  "navbar": {
+    "links": [
+      {
+        "label": "Get API Key",
+        "href": "https://www.lumina-org.com/app/agent/api-keys"
+      },
+      {
+        "label": "GitHub",
+        "href": "https://github.com/org-lumina"
+      }
+    ],
+    "primary": {
+      "type": "button",
+      "label": "Launch app",
+      "href": "https://www.lumina-org.com/app"
+    }
+  },
   "navigation": {
     "tabs": [
       {
@@ -15,39 +37,50 @@
         "groups": [
           {
             "group": "Getting started",
+            "pages": ["index", "quickstart"]
+          },
+          {
+            "group": "Core concepts",
             "pages": [
-              "index",
-              "quickstart",
-              "development"
+              "concepts/overview",
+              "concepts/shields",
+              "concepts/claimbonds",
+              "concepts/triggers",
+              "concepts/lumina-token"
             ]
           },
           {
-            "group": "Customization",
+            "group": "For AI agents",
             "pages": [
-              "essentials/settings",
-              "essentials/navigation"
+              "agents/overview",
+              "agents/onboarding",
+              "agents/first-policy",
+              "agents/monitor-bonds",
+              "agents/webhooks",
+              "agents/strategies"
             ]
           },
           {
-            "group": "Writing content",
+            "group": "SDK",
             "pages": [
-              "essentials/markdown",
-              "essentials/code",
-              "essentials/images",
-              "essentials/components",
-              "essentials/reusable-snippets"
+              "sdk/installation",
+              "sdk/client",
+              "sdk/policies",
+              "sdk/bonds",
+              "sdk/examples"
             ]
           },
           {
-            "group": "Agent ready",
+            "group": "Contracts",
             "pages": [
-              "agent-ready/prompt",
-              "agent-ready/visibility",
-              "agent-ready/contextual",
-              "ai-tools/cursor",
-              "ai-tools/claude-code",
-              "ai-tools/windsurf"
+              "contracts/deployed",
+              "contracts/architecture",
+              "contracts/audits"
             ]
+          },
+          {
+            "group": "Reference",
+            "pages": ["tokenomics", "status"]
           }
         ]
       },
@@ -71,56 +104,12 @@
           }
         ]
       }
-    ],
-    "global": {
-      "anchors": [
-        {
-          "anchor": "Documentation",
-          "href": "https://mintlify.com/docs",
-          "icon": "book-open-cover"
-        },
-        {
-          "anchor": "Blog",
-          "href": "https://mintlify.com/blog",
-          "icon": "newspaper"
-        }
-      ]
-    }
-  },
-  "logo": {
-    "light": "/logo/light.svg",
-    "dark": "/logo/dark.svg"
-  },
-  "navbar": {
-    "links": [
-      {
-        "label": "Support",
-        "href": "mailto:hi@mintlify.com"
-      }
-    ],
-    "primary": {
-      "type": "button",
-      "label": "Dashboard",
-      "href": "https://dashboard.mintlify.com"
-    }
-  },
-  "contextual": {
-    "options": [
-     "copy",
-     "view",
-     "chatgpt",
-     "claude",
-     "perplexity",
-     "mcp",
-     "cursor",
-     "vscode"
-   ]
+    ]
   },
   "footer": {
     "socials": {
-      "x": "https://x.com/mintlify",
-      "github": "https://github.com/mintlify",
-      "linkedin": "https://linkedin.com/company/mintlify"
+      "github": "https://github.com/org-lumina",
+      "x": "https://x.com/lumina_protocol"
     }
   }
 }

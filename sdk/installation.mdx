@@ -1,0 +1,50 @@
+---
+title: "Installation"
+description: "Install @lumina-org/sdk and verify connectivity in 30 seconds."
+icon: "download"
+---
+
+```bash
+npm install @lumina-org/sdk ethers
+# or
+pnpm add @lumina-org/sdk ethers
+# or
+yarn add @lumina-org/sdk ethers
+```
+
+`ethers` v6 is a peer-ish dependency — used for asset bytes32 encoding and
+for the `Signer` type accepted by `agent.onboard(signer)`.
+
+## Verify connectivity
+
+```ts
+import { LuminaClient } from '@lumina-org/sdk'
+
+const lumina = new LuminaClient({ apiKey: '' })  // empty for unauthenticated /health
+const health = await lumina.health()
+console.log(health.chain.chainId)   // 84532
+```
+
+## Configuration
+
+```ts
+new LuminaClient({
+  apiKey: 'lk_…',                                                   // required (pass "" for onboard)
+  baseUrl: 'https://lumina-api-production-ac85.up.railway.app',     // default
+})
+```
+
+For local dev against a checked-out lumina-api:
+
+```ts
+const lumina = new LuminaClient({ apiKey: 'lk_test', baseUrl: 'http://localhost:3000' })
+```
+
+## TypeScript
+
+The SDK is written in TypeScript and ships its own `.d.ts`. No
+`@types/lumina-org__sdk` — types are bundled.
+
+## Node version
+
+Node 18+ is required (the SDK uses the global `fetch`).

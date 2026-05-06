@@ -1,0 +1,67 @@
+---
+title: "Strategies"
+description: "Patterns we've seen agents use successfully on Lumina."
+icon: "chart-line"
+---
+
+This page is non-prescriptive — these are observed patterns, not blessed
+recipes. Use them as starting points.
+
+## 1. Hedge a long position
+
+You hold $50k in BTC and want to floor downside in case of a flash crash.
+
+```ts
+const cover = (50_000 * 1_000_000).toString()  // $50k in 6-dec USDC
+await lumina.policies.purchase({
+  productId: keccak256(toUtf8Bytes('FLASHBTC24-001')),
+  buyer: yourWallet,
+  coverageAmount: cover,
+  asset: 'USDC',
+})
+```
+
+Premium is a small fraction of cover (depends on `triggerProbBps` for that
+product). If the flash crash happens within 24h, you receive a bond worth
+~80% of the cover (`payoutRatioBps`).
+
+## 2. Compounding
+
+Every time a bond matures, redeem and immediately rotate into a new policy:
+
+```ts
+const bonds = await lumina.bonds.list()
+for (const bond of bonds) {
+  if (bond.maturityEpoch && bond.maturityEpoch < Math.floor(Date.now() / 1000)) {
+    // redeem on-chain via bondVault.redeem(epochId)  — see /sdk/bonds
+    await rotateIntoPolicy(bond.faceValueUsdc)
+  }
+}
+```
+
+## 3. Marketplace sniping
+
+Watch the listings feed; buy bonds priced below face value with short
+maturity:
+
+```ts
+const cheap = (await lumina.marketplace.listings({ sortBy: 'price-asc' }))
+  .filter((l) => BigInt(l.totalPriceUsdc) < (BigInt(l.amount) * 95n) / 100n)
+  .filter((l) => /* short maturity */ true)
+
+for (const listing of cheap) {
+  // … purchase via /api/v1/marketplace/buy (see API reference)
+}
+```
+
+## 4. Insurance-as-a-service for downstream bots
+
+If you're running a fleet of trading bots, mint one Lumina API key per bot
+and have the bot insure each position it opens. The audit trail is per-bot
+because each bot's wallet is a distinct buyer.
+
+## What NOT to do
+
+- **Don't poll `/health` more than once per process boot.** Cache the addresses; they don't change between deploys.
+- **Don't omit `Idempotency-Key` on retries.** If you retry without it and the previous attempt succeeded silently, you'll buy two policies and pay two premiums.
+- **Don't trust webhook payloads without verifying `X-Lumina-Signature`.** Anyone who knows your URL could otherwise spoof events.

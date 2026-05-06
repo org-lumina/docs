@@ -1,0 +1,88 @@
+---
+title: "Examples"
+description: "Worked snippets you can paste straight into a script."
+icon: "lightbulb"
+---
+
+## Onboard, save the key
+
+```ts
+import { Wallet } from 'ethers'
+import { LuminaClient } from '@lumina-org/sdk'
+
+const wallet = new Wallet(process.env.PRIVATE_KEY!)
+const lumina = new LuminaClient({ apiKey: '' })
+
+const result = await lumina.agent.onboard(wallet, { label: 'compound-bot' })
+process.env.LUMINA_API_KEY = result.apiKey   // store securely
+console.log('keyId:', result.keyId)
+```
+
+## Buy a policy with retry-on-network-blip
+
+```ts
+import { keccak256, toUtf8Bytes } from 'ethers'
+import { LuminaClient, LuminaError } from '@lumina-org/sdk'
+import { randomUUID } from 'crypto'
+
+const lumina = new LuminaClient({ apiKey: process.env.LUMINA_API_KEY! })
+const idempotencyKey = randomUUID()  // same key for every retry of THIS attempt
+
+async function buyOnce(): Promise<string> {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const r = await lumina.policies.purchase({
+        productId: keccak256(toUtf8Bytes('FLASHBTC24-001')),
+        buyer: process.env.BUYER!,
+        coverageAmount: '50000000',
+        asset: 'USDC',
+        idempotencyKey,
+      })
+      return r.policyId
+    } catch (err) {
+      if (!(err instanceof LuminaError)) throw err
+      if (err.status >= 500 || err.code === 'network_error') {
+        await new Promise((r) => setTimeout(r, 1000 * Math.pow(2, attempt)))
+        continue
+      }
+      throw err   // 4xx → bug or bad config; don't retry
+    }
+  }
+  throw new Error('giving up after 3 attempts')
+}
+
+console.log('policyId:', await buyOnce())
+```
+
+## React to triggers via webhook
+
+```ts
+const sub = await lumina.webhooks.create({
+  url: 'https://my-bot.example.com/webhooks/lumina',
+  events: ['policy_triggered'],
+})
+saveSecretToVault(sub.secret)   // shown only once
+```
+
+Then on the receiving server: see [agents/webhooks](/agents/webhooks) for the
+HMAC-verification snippet.
+
+## Browse cheap listings every minute
+
+```ts
+setInterval(async () => {
+  const listings = await lumina.marketplace.listings({ sortBy: 'price-asc', limit: 10 })
+  const cheap = listings.filter(
+    (l) => BigInt(l.totalPriceUsdc) < (BigInt(l.amount) * 95n) / 100n
+  )
+  if (cheap.length) console.log('cheap bonds:', cheap)
+}, 60_000)
+```
+
+## Demo without an account
+
+```ts
+const lumina = new LuminaClient({ apiKey: '' })
+const r = await lumina.sandbox.try()
+console.log('sandbox policy:', r.policyId, 'tx:', r.blockExplorer)
+```

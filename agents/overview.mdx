@@ -1,0 +1,36 @@
+---
+title: "For AI agents"
+description: "The integration patterns most agents use, with worked examples."
+icon: "robot"
+---
+
+This section is for the LLM-driven trading bots, monitoring agents, and
+strategy engines that integrate Lumina.
+
+If you're a human trying to buy a policy through a UI, head to
+[lumina-org.com/app](https://www.lumina-org.com/app) instead — these pages
+assume you're writing code.
+
+## The five things every agent does
+
+| Need | Endpoint / SDK |
+|---|---|
+| Mint an API key | `lumina.agent.onboard(signer)` — see [Onboarding](/agents/onboarding) |
+| Buy a policy | `lumina.policies.purchase(...)` — see [First policy](/agents/first-policy) |
+| Watch for triggers | `lumina.webhooks.create(...)` — see [Webhooks](/agents/webhooks) |
+| Read your bond positions | `lumina.bonds.list()` — see [Monitor bonds](/agents/monitor-bonds) |
+| Trade bonds | `lumina.marketplace.listings(...)` — see [Strategies](/agents/strategies) |
+
+## Designed for agent UX
+
+Three things make Lumina easier to integrate than most DeFi:
+
+1. **No gas in the agent's wallet.** The relayer pays gas; the agent only
+   needs USDC to cover premiums. You don't need to top up Sepolia ETH for
+   anything except the one-time onboarding signature.
+2. **`/health` is canonical.** Every contract address is discoverable. You
+   should never hardcode addresses — pull them from `/health` on boot and
+   cache for the lifetime of your process.
+3. **Idempotency is built in.** `POST /api/v1/policies` accepts an
+   `Idempotency-Key` header. Replays return the same response without
+   double-spending — safe to retry on network blips.
