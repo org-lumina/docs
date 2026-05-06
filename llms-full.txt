@@ -1,0 +1,771 @@
+# Lumina Protocol — Full LLM Reference
+
+> Manual override of `/llms-full.txt`. Mintlify's auto-generator was
+> serving a stale OpenAPI sample instead of the canonical Lumina spec at
+> `/openapi.json`. This file is the source-of-truth machine-readable
+> summary of the Lumina docs. Source pages live at
+> https://docs.lumina-org.com.
+
+---
+
+## About
+
+Lumina Protocol is parametric DeFi insurance built for AI agents. It runs
+on Base Sepolia (chainId 84532) today, with Base mainnet rollout gated on
+audit-fix completion. Three properties make it easier to integrate than
+typical DeFi:
+
+- **Programmatic.** Buy a policy in one HTTP call. No KYC, no docs to sign,
+  no broker.
+- **Relayer-paid.** Agents do not pay gas. The off-chain relayer signs
+  `purchasePolicyFor` on behalf of the buyer; the agent only holds USDC for
+  premiums.
+- **Fair payouts.** Triggers come from a signed off-chain oracle and pay out
+  as ERC-1155 bonds the agent can hold, redeem at maturity, or sell on a
+  secondary marketplace.
+
+Source: https://docs.lumina-org.com
+
+---
+
+## Quick Discovery
+
+Canonical public URLs an autonomous agent should know about:
+
+| Resource | URL |
+|---|---|
+| Homepage | https://www.lumina-org.com |
+| Docs | https://docs.lumina-org.com |
+| App (UI for humans) | https://www.lumina-org.com/app |
+| Self-service API key issuance | https://www.lumina-org.com/app/agent/api-keys |
+| API base URL | https://lumina-api-production-ac85.up.railway.app |
+| Health (live contract addresses) | https://lumina-api-production-ac85.up.railway.app/health |
+| OpenAPI 3.0.3 spec | https://lumina-api-production-ac85.up.railway.app/openapi.json |
+| Swagger UI | https://lumina-api-production-ac85.up.railway.app/api-docs |
+| Sandbox info | https://lumina-api-production-ac85.up.railway.app/sandbox/info |
+| npm SDK | https://www.npmjs.com/package/@lumina-org/sdk |
+| GitHub org | https://github.com/org-lumina |
+| SDK source | https://github.com/org-lumina/lumina-sdk |
+| Docs source | https://github.com/org-lumina/docs |
+| Postman collection | https://github.com/org-lumina/lumina-api/blob/main/docs/lumina-api.postman_collection.json |
+
+`/health` is the canonical source for live contract addresses on every
+deploy. Always pull from it on boot rather than hardcoding addresses — a
+redeploy invalidates yesterday's `.env`.
+
+Source: https://docs.lumina-org.com/contracts/deployed and
+https://docs.lumina-org.com/status
+
+---
+
+## Quickstart (5 minutes)
+
+The shortest path from zero to a real on-chain policy. Five minutes if your
+wallet is funded with Base Sepolia ETH for the onboarding signature only —
+the protocol itself never asks the agent for gas.
+
+### 1. Install the SDK
+
+```bash
+npm install @lumina-org/sdk ethers
+# or pnpm add / yarn add
+```
+
+`ethers` v6 is a peer-ish dependency, used for asset bytes32 encoding and
+the `Signer` type accepted by `agent.onboard(signer)`.
+
+### 2. Mint an API key (self-service)
+
+Sign one canonical message with your wallet — the API verifies the
+signature recovers to the wallet address and returns a fresh `lk_…` key.
+
+```ts
+import { Wallet } from 'ethers'
+import { LuminaClient } from '@lumina-org/sdk'
+
+const wallet = new Wallet(process.env.PRIVATE_KEY!)
+const lumina = new LuminaClient({ apiKey: '' })  // empty for onboard
+
+const { apiKey } = await lumina.agent.onboard(wallet, { label: 'my-bot' })
+console.log('Save this NOW (shown only once):', apiKey)
+```
+
+Canonical message: `Lumina onboarding for {address} at {timestamp}`. The
+SDK builds it for you. Caps: 3 active keys per wallet, 10 onboarding
+attempts per hour per IP, ±300 second timestamp window.
+
+### 3. Verify connectivity
+
+```ts
+const lumina = new LuminaClient({ apiKey: process.env.LUMINA_API_KEY! })
+const health = await lumina.health()
+console.log('chainId:', health.chain.chainId)              // 84532
+console.log('contracts:', Object.keys(health.contracts))   // coverRouter, …
+```
+
+### 4. Buy a $50 policy
+
+```ts
+const policy = await lumina.policies.purchase({
+  productName: 'FLASHBTC1H-001',  // SDK 0.3.0+ auto-resolves productId hash + asset='BTC'
+  buyer: '0xYourWalletAddress',   // wallet that pays the USDC premium
+  coverageAmount: '50000000',     // $50 in 6-dec USDC base units
+})
+console.log('policyId:', policy.policyId, 'tx:', policy.txHash)
+```
+
+The relayer paid the gas, your buyer wallet paid the USDC premium, and you
+got back a `policyId` to reference for triggers and bonds.
+
+### 5. Demo without an account
+
+```bash
+curl -X POST https://lumina-api-production-ac85.up.railway.app/sandbox/try
+```
+
+Server-fixed buyer wallet, fixed `$1` coverage. Useful for first-call
+demos. 10 requests per hour per IP.
+
+Source: https://docs.lumina-org.com/quickstart
+
+---
+
+## How Lumina Works
+
+Four moving parts. Once you know them, every endpoint in the API is just a
+verb on one of these nouns.
+
+```
+        Buyer (wallet/agent)
+               │  premium (USDC)
+               ▼
+   ┌─────────────────────────┐
+   │      CoverRouterV2      │ ◄──── Relayer pays gas (purchasePolicyFor)
+   └────────┬────────────────┘
+            ▼
+   ┌─────────────────────────┐
+   │     PolicyManagerV2     │ records policy, snapshots LUMINA price
+   └────────┬────────────────┘
+            ▼
+   ┌─────────────────────────┐
+   │   Shield (per product)  │ verifies oracle signature, checks condition
+   └────────┬────────────────┘
+            ▼  (when triggered)
+   ┌─────────────────────────┐
+   │       BondVault         │ mints ERC-1155 bond to buyer
+   └────────┬────────────────┘
+            ▼
+   ┌─────────────────────────┐
+   │      ClaimBond          │ holdable, redeemable, sellable in marketplace
+   └─────────────────────────┘
+```
+
+| Concept | What it is |
+|---|---|
+| Shield | A specific parametric product (e.g. "BTC drops 20% in 1h"). Each Shield is its own contract; `Shield.submitTrigger(...)` accepts an EIP-712 signed price proof from the oracle and decides whether the condition is met. |
+| Policy | The buyer's coverage. Stored in `PolicyManagerV2`, indexed by `(productId, policyId)`. Each policy snapshots the LUMINA/USD price at purchase time so payouts use a price the buyer accepted. |
+| Trigger | The off-chain oracle's claim that the condition fired, signed with EIP-712. Anyone can submit it; the Shield verifies and only mints the bond if the condition holds. |
+| Claim Bond | The payout. ERC-1155 token issued by `BondVault`. The agent can hold it, redeem it for USDC at maturity, or list it on the secondary marketplace. |
+
+Source: https://docs.lumina-org.com/concepts/overview
+
+---
+
+## Products and Assets
+
+Each shield contract validates `params.asset` against a hardcoded literal.
+Sending the wrong asset reverts with `InvalidAsset(bytes32)` even though
+the **payment token (USDC) is the same for every product**. The asset is a
+*what-it-covers* tag, not the payment token.
+
+The bytes32 hashes below come from the live `/products` endpoint and match
+the `PRODUCT_ID` constants in each `Shield*.sol` on Base Sepolia.
+
+| Product name | Expected `asset` | Shield type | Duration | productId (truncated) |
+|---|---|---|---|---|
+| `FLASHBTC1H-001` | `BTC` | Flash crash on BTC | 1 h | `0xe87625ef…dfeaddd` |
+| `FLASHBTC4H-001` | `BTC` | Flash crash on BTC | 4 h | `0x0c8e45ca…a03d` |
+| `FLASHBTC24-001` | `BTC` | Flash crash on BTC | 24 h | `0xdc5bcc7d…a7b9` |
+| `FLASHBTC48-001` | `BTC` | Flash crash on BTC | 48 h | `0xb6306087…1ee8` |
+| `FLASHETH1H-001` | `ETH` | Flash crash on ETH | 1 h | `0x6cedbccf…8915` |
+| `FLASHETH24-001` | `ETH` | Flash crash on ETH | 24 h | `0xcc03aef9…f240` |
+| `FLASHETH48-001` | `ETH` | Flash crash on ETH | 48 h | `0x89a37df7…712d` |
+| `MICRODEPEG-001` | `USDT` | Stablecoin micro-depeg | 7 d | `0x317c1a64…3640` |
+| `RATESHOCK-001` | `USDC` | Borrow-rate spike | 7 d | `0x8ae1e414…347f` |
+
+### Recommended pattern: pass `productName`
+
+SDK 0.3.0 and the `POST /api/v1/policies` endpoint both auto-resolve the
+bytes32 productId hash AND the per-shield asset literal from
+`productName`. You don't need to compute keccak yourself, and you can't
+accidentally pair `FLASHBTC1H-001` with `USDC`.
+
+```ts
+const policy = await lumina.policies.purchase({
+  productName: 'FLASHBTC1H-001',  // resolves productId + asset='BTC'
+  buyer: '0xYourWalletAddress',
+  coverageAmount: '50000000',     // $50, paid in USDC
+})
+```
+
+### Common errors
+
+| Error | Cause | Fix |
+|---|---|---|
+| `InvalidAsset(bytes32)` | Sent the wrong asset for that shield | Use `productName` and let the resolver pick the asset |
+| `unknown_product` (400) | productName not in the registry | Only the 9 listed products are deployed |
+| `ProductNotConfigured` | productId hash doesn't exist on-chain | Verify the keccak256 preimage matches a canonical name |
+| `InvalidCoverage` | Below `$100` minimum (`MIN_PRICE_FOR_NEW_POLICIES`) | Increase `coverageAmount` to ≥ `100000000` |
+
+Source: https://docs.lumina-org.com/agents/products-and-assets and
+https://docs.lumina-org.com/concepts/shields
+
+---
+
+## Deployed Contracts (Base Sepolia, chainId 84532)
+
+Snapshot on **2026-05-05**. The single source of truth is `/health` —
+never hardcode these in production:
+
+| Contract | Address (verify against /health) |
+|---|---|
+| coverRouter | `0xebC3A783477FbD2720C024e16A8d63B8Db983D84` |
+| policyManager | `0xd9732A8d6Cf5266Dd896B825E78E387B7Dd2c379` |
+| bondVault | `0x101F92fC506C1e60A2A0dD01eA29597EBf222d2B` |
+| claimBond | `0x3d2F5DB2505367D00ef81c51AD3cA66159271730` |
+| marketplace | `0xfaC56692c626718aC8953A3d5fAE67fac2f1Be6E` |
+| usdc (mock) | `0xD944d8e5D8329994D83950872Ec210891d3Ab6AE` |
+| luminaToken | `0x8A0FDc2126eb9b0c88D17711D62713A1c06CF7Ab` |
+
+Mainnet not yet deployed — gated on completion of audit fixes.
+
+Source: https://docs.lumina-org.com/contracts/deployed
+
+---
+
+## API Reference
+
+The Lumina API is a thin REST surface over the on-chain protocol. The
+canonical contract is the OpenAPI 3.0.3 spec at `/openapi.json`. This
+section is a human-friendly tour of the most-used endpoints.
+
+### Base URL
+
+```
+https://lumina-api-production-ac85.up.railway.app
+```
+
+Local dev defaults to `http://localhost:3000` (override with `PORT` env in
+the `lumina-api` repo).
+
+### Authentication
+
+| Surface | Auth |
+|---|---|
+| `/health`, `/products`, `/policies/:p/:i`, `/sandbox/*`, `/openapi.json`, `/api-docs` | None |
+| `/api/v1/agent/onboard` | None — request body itself is signed by the wallet |
+| `/api/v1/policies`, `/bonds`, `/marketplace/listings`, `/agent/keys`, `/webhooks` | `x-api-key: lk_…` |
+| `/api/v1/keys/generate` (legacy admin issuer) | `x-admin-token: <secret>` |
+
+### Numeric encoding
+
+Every on-chain integer (USDC base units, LUMINA wei, prices) is returned
+as a **decimal string** to avoid JavaScript Number precision loss. Convert
+with `BigInt(str)`.
+
+### Error envelope
+
+```json
+{ "error": "machine_code", "message": "human-readable", "code": "machine_code" }
+```
+
+The SDK maps non-2xx into `LuminaError` with `.status`, `.code`, `.message`.
+
+### Idempotency
+
+`POST /api/v1/policies` honours an optional `Idempotency-Key` header
+(UUIDv4 recommended). Replays return the cached response without
+double-spending — safe to retry on network blips.
+
+### Endpoint: GET /health
+
+Returns the canonical contract address set, the relayer wallet, and chain
+status. Public — no key required.
+
+```bash
+curl https://lumina-api-production-ac85.up.railway.app/health
+```
+
+Response fields: `status` (`ok` / `degraded`), `chain.chainId` (84532),
+`chain.block`, `chain.rpcConnected`, `relayer.address`,
+`relayer.balanceWei`, `contracts` (map).
+
+### Endpoint: GET /products
+
+Public list of registered shields, their productIds, durations,
+`payoutRatioBps`, and `triggerProbBps`.
+
+### Endpoint: POST /api/v1/policies (purchase a policy)
+
+Buy parametric coverage on behalf of `buyer`. Relayer signs
+`purchasePolicyFor` and pays gas; buyer pays USDC premium.
+
+```bash
+curl -X POST https://lumina-api-production-ac85.up.railway.app/api/v1/policies \
+  -H "x-api-key: $LUMINA_API_KEY" \
+  -H "Content-Type: application/json" \
+  -H "Idempotency-Key: $(uuidgen)" \
+  -d '{
+    "productName":    "FLASHBTC1H-001",
+    "coverageAmount": "50000000",
+    "buyer":          "0xYourWalletAddress"
+  }'
+```
+
+Body fields:
+
+- **`productName`** — canonical name. Preferred input; the API resolves
+  both `productId` hash and per-shield asset literal from it.
+- **`productId`** — bytes32 hash. Optional alternative to `productName`.
+- **`coverageAmount`** — string of USDC base units. `$50 = "50000000"`.
+- **`asset`** — bytes32 of asset symbol. **Optional** — auto-resolved from
+  the registry. Sending the wrong one reverts `InvalidAsset(bytes32)`.
+- **`buyer`** — wallet that pays USDC premium. Must hold ≥ premium and
+  have approved the relayer-side spender.
+
+Response: `{ policyId, txHash, blockNumber, buyer, productId,
+coverageAmount, premiumPaid }`.
+
+Errors:
+
+| HTTP | Code | Retry? |
+|---|---|---|
+| 400 | `validation_error` | No |
+| 401 | `invalid_api_key` | No |
+| 422 | `shield_paused` | Maybe later |
+| 422 | `exceeds_capacity` | Maybe later |
+| 429 | `rate_limit` | Yes (backoff) |
+| 5xx | `server_error` | Yes (≤3 attempts) |
+
+### Endpoint: GET /policies/{productId}/{policyId}
+
+Public read of a single policy. No auth required.
+
+### Endpoint: GET /api/v1/policies
+
+Lists policies for the calling wallet. Cross-wallet listing returns 403.
+
+### Endpoint: POST /api/v1/agent/onboard
+
+Self-service API key issuance. The body itself is signed by the wallet —
+no auth header. Caps: 3 active keys per wallet, 10 attempts per hour per
+IP, ±300 second timestamp window.
+
+Body: `{ walletAddress, signature, timestamp, label }`. The signed
+canonical message is `Lumina onboarding for {address} at {timestamp}`
+(EIP-191 personal_sign).
+
+Errors: `invalid_body` (400), `stale_timestamp` (400),
+`invalid_signature` (401), `cap_reached` (409), `rate_limit` (429).
+
+### Endpoint: GET / DELETE /api/v1/agent/keys
+
+List metadata (never plaintext) and revoke keys owned by the calling
+wallet.
+
+### Endpoint: POST /api/v1/webhooks
+
+Subscribe a URL to receive HMAC-signed event deliveries. See the Webhooks
+section below.
+
+### Endpoint: GET / DELETE /api/v1/webhooks
+
+List subscriptions (metadata only — secret is never returned again) and
+delete by id.
+
+### Endpoint: GET /api/v1/bonds
+
+List ERC-1155 bond positions for the calling wallet.
+
+### Endpoint: GET /api/v1/marketplace/listings
+
+Browse active secondary-market listings. Query parameters: `limit`
+(default 50), `offset` (default 0), `sortBy`
+(`price-asc | price-desc | createdAt-desc | listedAt-desc`),
+`maxPriceUsdc`.
+
+### Endpoint: GET /sandbox/info
+
+Returns sandbox status, server-funded wallet address, coverage cap,
+default `productName`, rate limits.
+
+### Endpoint: POST /sandbox/try
+
+Execute a real on-chain policy purchase using a shared, server-funded
+wallet. No API key required. 10 requests per IP per hour. Coverage is
+fixed at the on-chain minimum (`coverageCapUsdc`, default $100). Bonds
+minted by sandbox triggers belong to the shared wallet, not the caller.
+
+```bash
+curl -X POST https://lumina-api-production-ac85.up.railway.app/sandbox/try \
+  -H "Content-Type: application/json" \
+  -d '{"productName":"MICRODEPEG-001"}'
+```
+
+### Endpoint: POST /api/v1/policies/{id}/trigger
+
+Convenience wrapper that asks the oracle for a fresh EIP-712 proof and
+calls `Shield.submitTrigger(payload, signature)` for the policy. Anyone
+can submit — the signature is what gives the trigger weight.
+
+Source: https://docs.lumina-org.com/api-reference/introduction
+
+---
+
+## SDK — `@lumina-org/sdk`
+
+Current published version: **0.3.0** on npm. TypeScript-first; types are
+bundled (no `@types/lumina-org__sdk`). Node 18+ required (uses global
+`fetch`).
+
+```bash
+npm install @lumina-org/sdk ethers
+```
+
+### Construction
+
+```ts
+import { LuminaClient } from '@lumina-org/sdk'
+
+const lumina = new LuminaClient({
+  apiKey: process.env.LUMINA_API_KEY!,
+  baseUrl: 'https://lumina-api-production-ac85.up.railway.app',  // default
+})
+```
+
+Construction is synchronous and never makes a network call. Call
+`.health()` to verify reachability.
+
+### Sub-resources
+
+| Property | Endpoints |
+|---|---|
+| `lumina.products` | `GET /products`, `GET /products/:id`, `GET /products/:id/quote` |
+| `lumina.policies` | `GET / POST /api/v1/policies`, `GET /policies/:prod/:id` |
+| `lumina.bonds` | `GET /api/v1/bonds` |
+| `lumina.marketplace` | `GET /api/v1/marketplace/listings` |
+| `lumina.agent` | `POST /api/v1/agent/onboard`, `GET / DELETE /api/v1/agent/keys` |
+| `lumina.webhooks` | `POST / GET / DELETE /api/v1/webhooks` |
+| `lumina.sandbox` | `GET /sandbox/info`, `POST /sandbox/try` |
+
+### Errors
+
+```ts
+import { LuminaError } from '@lumina-org/sdk'
+
+try {
+  await lumina.policies.purchase({ … })
+} catch (err) {
+  if (err instanceof LuminaError) {
+    err.status   // HTTP status code
+    err.code     // e.g. 'invalid_api_key'
+    err.message  // human-readable
+  }
+}
+```
+
+Network-level errors (connection refused, timeout) are also wrapped as
+`LuminaError` with `status === 0` and `code === 'network_error'`.
+
+### Buy a policy with retry-on-blip
+
+```ts
+import { LuminaClient, LuminaError } from '@lumina-org/sdk'
+import { randomUUID } from 'crypto'
+
+const lumina = new LuminaClient({ apiKey: process.env.LUMINA_API_KEY! })
+const idempotencyKey = randomUUID()
+
+async function buyOnce(): Promise<string> {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const r = await lumina.policies.purchase({
+        productName: 'FLASHBTC24-001',
+        buyer: process.env.BUYER!,
+        coverageAmount: '50000000',
+        idempotencyKey,
+      })
+      return r.policyId
+    } catch (err) {
+      if (!(err instanceof LuminaError)) throw err
+      if (err.status >= 500 || err.code === 'network_error') {
+        await new Promise((r) => setTimeout(r, 1000 * Math.pow(2, attempt)))
+        continue
+      }
+      throw err   // 4xx → bug; do not retry
+    }
+  }
+  throw new Error('giving up after 3 attempts')
+}
+```
+
+### Read bonds and marketplace
+
+```ts
+const bonds = await lumina.bonds.list()
+//   [{ bondId, owner, amount, faceValueUsdc, pricePerBondUsdc?, maturityEpoch? }]
+
+const listings = await lumina.marketplace.listings({
+  limit: 50,
+  sortBy: 'price-asc',
+  maxPriceUsdc: '5000000000',
+})
+```
+
+### Asset encoding (advanced override)
+
+```ts
+asset: 'BTC'    // encoded to 0x4254430000…0000 for you
+asset: '0x5553444300000000000000000000000000000000000000000000000000000000'
+```
+
+The SDK accepts symbols (`'BTC' | 'ETH' | 'USDC' | 'USDT'`) and encodes
+them to bytes32, or a 32-byte hex string directly. Recommended: don't
+override — pass `productName` and let the SDK auto-resolve from the
+registry.
+
+Source: https://docs.lumina-org.com/sdk/installation,
+https://docs.lumina-org.com/sdk/client,
+https://docs.lumina-org.com/sdk/policies,
+https://docs.lumina-org.com/sdk/bonds,
+https://docs.lumina-org.com/sdk/examples
+
+---
+
+## Webhooks — HMAC delivery semantics
+
+Push notifications for policy / bond / marketplace events. HMAC-signed.
+Polling is wasteful — subscribe a URL and the API will POST JSON when
+something happens.
+
+### Subscribe
+
+```ts
+const sub = await lumina.webhooks.create({
+  url: 'https://my-bot.example.com/webhooks/lumina',
+  events: ['policy_purchased', 'policy_triggered', 'bond_minted'],
+})
+console.log('STORE THIS NOW:', sub.secret)  // 32-byte hex, returned ONCE
+```
+
+The `secret` is a 32-byte hex string. Returned exactly once. Store it in a
+secret manager — there is no API to retrieve it later.
+
+### Available events
+
+| Event | Fires when |
+|---|---|
+| `policy_purchased` | A `purchasePolicyFor` call completes successfully |
+| `policy_triggered` | A trigger is accepted on-chain and a bond is minted |
+| `bond_minted` | Same trigger event, surfaced from the BondVault perspective |
+| `bond_redeemed` | A bond is redeemed for USDC at maturity |
+| `listing_created` | Your wallet listed a bond on the marketplace |
+| `listing_purchased` | Your listing was bought by another wallet |
+
+Use `events: '*'` to subscribe to everything for the wallet (recommended
+for new integrations).
+
+### Headers on every delivery
+
+| Header | Value |
+|---|---|
+| `Content-Type` | `application/json` |
+| `X-Lumina-Signature` | `hex(HMAC-SHA256(rawBody, secret))` |
+| `X-Lumina-Event` | The event name, e.g. `policy_purchased` |
+| `X-Lumina-Delivery` | A unique delivery ID for de-duplication |
+
+### Verifying the signature (Express example)
+
+```ts
+import crypto from 'crypto'
+import express from 'express'
+
+const app = express()
+
+// IMPORTANT: use raw body, not the JSON-parsed one — the HMAC is over the
+// exact bytes the API sent.
+app.post('/webhooks/lumina', express.raw({ type: 'application/json' }), (req, res) => {
+  const sig = req.header('X-Lumina-Signature') ?? ''
+  const expected = crypto.createHmac('sha256', process.env.LUMINA_WEBHOOK_SECRET!)
+    .update(req.body)
+    .digest('hex')
+
+  if (!crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected))) {
+    return res.status(401).send('bad signature')
+  }
+
+  const payload = JSON.parse(req.body.toString('utf8'))
+  console.log('event:', req.header('X-Lumina-Event'), payload)
+  res.sendStatus(200)
+})
+```
+
+### Delivery semantics
+
+- **Acceptance:** any 2xx response counts as delivered.
+- **4xx:** marked failed permanently (the receiver said no).
+- **5xx / network:** retried with exponential backoff (30s · 2^attempt).
+- **Max attempts:** 3 (longest gap from event to final failure ≈150s).
+
+The worker polls the queue every 30 seconds. Latency from event to first
+delivery attempt is therefore 0–30s.
+
+### Limits
+
+- **One URL per wallet.** Re-registering the same `(wallet, url)` pair
+  returns 409. Delete and re-register to rotate the secret.
+- **Multiple URLs allowed.** Different URLs (dev/staging/prod) can coexist
+  on the same wallet.
+- **HTTPS required** in production. `http://localhost` is allowed for
+  testing.
+
+Source: https://docs.lumina-org.com/agents/webhooks
+
+---
+
+## Triggers and Claim Bonds (payout flow)
+
+When a policy's parametric condition fires, the on-chain payout flow is
+fully deterministic.
+
+### What's signed (EIP-712)
+
+```
+struct PriceProof {
+  bytes32 asset;      // keccak256("BTC"), etc.
+  uint256 price;      // 18 decimals
+  uint256 timestamp;  // unix seconds; ≤ MAX_PROOF_AGE old
+  uint256 nonce;      // per-asset replay counter
+}
+```
+
+Shield verifies:
+
+1. Signature recovers to `LuminaOracleV2.oracleKey()` — the only allowed
+   signer.
+2. `block.timestamp - payload.timestamp ≤ MAX_PROOF_AGE` (24 hours after
+   audit fix M-8).
+3. Nonce is strictly greater than the last accepted nonce for the asset
+   (replay protection).
+4. Asset/price meets the Shield's specific condition.
+
+### Claim Bond
+
+The ERC-1155 token issued by `BondVault` when a Shield triggers. Three
+things you can do with it:
+
+1. **Hold and redeem.** Wait until maturity, call `BondVault.redeem(epochId)`
+   to exchange for USDC.
+2. **List on the marketplace.** Sell at any time, usually for a small
+   discount to face value.
+3. **Buy more.** Snipe other people's listings priced below face value.
+
+Token id is the bond's epoch id — bonds with the same epoch share a
+maturity date. `BondIssued(buyer, epochId, amount)` is emitted at mint
+time.
+
+Source: https://docs.lumina-org.com/concepts/triggers and
+https://docs.lumina-org.com/concepts/claimbonds
+
+---
+
+## Onboarding flow (wallet-signed key issuance)
+
+API keys are minted via signature, not via a request to a human admin.
+
+1. Build the canonical message: `Lumina onboarding for {address} at {timestamp}`.
+2. Sign with your wallet (EIP-191 `personal_sign`).
+3. POST `{walletAddress, signature, timestamp, label}` to
+   `/api/v1/agent/onboard`.
+4. The API verifies the signature recovers to `walletAddress`, then mints
+   a key.
+5. Plaintext key is in the response body — store it now, never returned
+   again.
+
+### curl form
+
+```bash
+ADDRESS=0xYourWalletAddress
+TIMESTAMP=$(date +%s)
+MESSAGE="Lumina onboarding for ${ADDRESS} at ${TIMESTAMP}"
+SIGNATURE=$(cast wallet sign "$MESSAGE" --private-key "$PRIVATE_KEY")
+
+curl -X POST https://lumina-api-production-ac85.up.railway.app/api/v1/agent/onboard \
+  -H "Content-Type: application/json" \
+  -d "{\"walletAddress\":\"${ADDRESS}\",\"signature\":\"${SIGNATURE}\",\"timestamp\":${TIMESTAMP},\"label\":\"my-bot\"}"
+```
+
+### Caps and limits
+
+| Limit | Value |
+|---|---|
+| Active keys per wallet | 3 (revoke before issuing the 4th) |
+| Onboarding requests per hour per IP | 10 |
+| Timestamp window | ±300 seconds of server time |
+
+Source: https://docs.lumina-org.com/agents/onboarding
+
+---
+
+## Status / monitoring
+
+```ts
+import { LuminaClient } from '@lumina-org/sdk'
+
+const lumina = new LuminaClient({ apiKey: '' })
+const h = await lumina.health()
+
+if (!h.chain.rpcConnected) alert('RPC down')
+if (BigInt(h.relayer.balanceWei) < 5_000_000_000_000_000n) alert('relayer low gas')
+```
+
+Field meanings:
+
+- `status` — `ok` if processing requests; `degraded` otherwise.
+- `chain.chainId` — always 84532 on the current deploy.
+- `chain.block` — most recent block observed via RPC.
+- `chain.rpcConnected` — `false` means upstream RPC is unreachable; buys
+  and triggers will start failing soon.
+- `relayer.address` — wallet that signs `purchasePolicyFor`.
+- `relayer.balanceWei` — gas budget; below ~0.005 ETH means re-fund
+  overdue.
+- `contracts` — map of canonical contract addresses.
+
+Source: https://docs.lumina-org.com/status
+
+---
+
+## Source URLs (per section)
+
+- About / overview: https://docs.lumina-org.com
+- Quickstart: https://docs.lumina-org.com/quickstart
+- For AI agents: https://docs.lumina-org.com/agents/overview
+- Onboarding: https://docs.lumina-org.com/agents/onboarding
+- First policy: https://docs.lumina-org.com/agents/first-policy
+- Products and assets: https://docs.lumina-org.com/agents/products-and-assets
+- Webhooks: https://docs.lumina-org.com/agents/webhooks
+- How Lumina works: https://docs.lumina-org.com/concepts/overview
+- Shields: https://docs.lumina-org.com/concepts/shields
+- Triggers: https://docs.lumina-org.com/concepts/triggers
+- Claim Bonds: https://docs.lumina-org.com/concepts/claimbonds
+- Deployed contracts: https://docs.lumina-org.com/contracts/deployed
+- Audits: https://docs.lumina-org.com/contracts/audits
+- API reference: https://docs.lumina-org.com/api-reference/introduction
+- Sandbox: https://docs.lumina-org.com/api-reference/sandbox
+- SDK install: https://docs.lumina-org.com/sdk/installation
+- SDK client: https://docs.lumina-org.com/sdk/client
+- SDK policies: https://docs.lumina-org.com/sdk/policies
+- SDK bonds: https://docs.lumina-org.com/sdk/bonds
+- SDK examples: https://docs.lumina-org.com/sdk/examples
+- Status: https://docs.lumina-org.com/status
+- OpenAPI spec: https://lumina-api-production-ac85.up.railway.app/openapi.json
