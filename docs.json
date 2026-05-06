@@ -46,6 +46,89 @@
       "href": "https://www.lumina-org.com/app"
     }
   },
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Guides",
+        "groups": [
+          {
+            "group": "Getting started",
+            "pages": ["index", "quickstart"]
+          },
+          {
+            "group": "Core concepts",
+            "pages": [
+              "concepts/overview",
+              "concepts/shields",
+              "concepts/claimbonds",
+              "concepts/triggers",
+              "concepts/lumina-token"
+            ]
+          },
+          {
+            "group": "For AI agents",
+            "pages": [
+              "agents/overview",
+              "agents/onboarding",
+              "agents/first-policy",
+              "agents/products-and-assets",
+              "agents/monitor-bonds",
+              "agents/webhooks",
+              "agents/strategies"
+            ]
+          },
+          {
+            "group": "SDK",
+            "pages": [
+              "sdk/installation",
+              "sdk/client",
+              "sdk/policies",
+              "sdk/bonds",
+              "sdk/examples"
+            ]
+          },
+          {
+            "group": "Contracts",
+            "pages": [
+              "contracts/deployed",
+              "contracts/architecture",
+              "contracts/audits"
+            ]
+          },
+          {
+            "group": "Reference",
+            "pages": ["tokenomics", "status"]
+          }
+        ]
+      },
+      {
+        "tab": "API reference",
+        "groups": [
+          {
+            "group": "API documentation",
+            "pages": [
+              "api-reference/introduction"
+            ]
+          },
+          {
+            "group": "Endpoint reference",
+            "pages": [
+              "api-reference/endpoint/read-policy",
+              "api-reference/endpoint/purchase-policy",
+              "api-reference/endpoint/list-products",
+              "api-reference/endpoint/create-webhook"
+            ]
+          },
+          {
+            "group": "Sandbox",
+            "pages": [
+              "api-reference/sandbox"
+            ]
+          }
+        ]
+      }
+    ]
+  },
   "footer": {
     "links": [
       {
