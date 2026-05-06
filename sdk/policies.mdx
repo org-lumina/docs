@@ -26,13 +26,26 @@ const p = await lumina.policies.get(
 
 ## `lumina.policies.purchase(params)`
 
+SDK 0.3.0+ auto-resolves both the `productId` keccak hash AND the per-shield
+`asset` literal from `productName`. Pass `productName` whenever you can:
+
 ```ts
 const receipt = await lumina.policies.purchase({
-  productId: '0x…',
+  productName: 'FLASHBTC1H-001',  // resolves productId + asset='BTC'
   buyer: '0x…',
   coverageAmount: '50000000',     // string of USDC base units
-  asset: 'USDC',                  // OR a 32-byte hex string
   idempotencyKey: 'uuid-v4',      // optional but recommended
+})
+```
+
+Or pass `productId` explicitly — the SDK still auto-resolves the asset by
+reverse-lookup against the canonical registry:
+
+```ts
+const receipt = await lumina.policies.purchase({
+  productId: '0xe87625ef…',       // FLASHBTC1H-001 hash
+  buyer: '0x…',
+  coverageAmount: '50000000',
 })
 ```
 
@@ -52,13 +65,17 @@ Returns:
 
 ### Asset encoding
 
-`asset: 'USDC'` is encoded to its bytes32 representation
-(`0x5553444300…0000`) for you. To bypass the encoder and pass a raw bytes32,
-provide a 32-byte hex string directly:
+The `asset` field is **optional** when `productName` or a registered
+`productId` is supplied. To override, pass a symbol (`'BTC' | 'ETH' | 'USDC'
+| 'USDT'`) or a 32-byte hex string:
 
 ```ts
+asset: 'BTC'    // encoded to 0x4254430000…0000 for you
 asset: '0x5553444300000000000000000000000000000000000000000000000000000000'
 ```
+
+See [Products and assets](/agents/products-and-assets) for the full per-shield
+table and a list of `InvalidAsset` failure modes.
 
 ### Idempotency
 

@@ -1,0 +1,97 @@
+---
+title: "Products and Assets"
+description: "The asset literal each shield expects, and how the SDK auto-resolves it for you."
+icon: "table"
+---
+
+Each shield contract validates `params.asset` against a hardcoded literal.
+Sending the wrong asset reverts with `InvalidAsset(bytes32)` even though
+the **payment token (USDC) is the same for every product**. The asset is
+a *what-it-covers* tag, not the payment token.
+
+## The mapping
+
+The bytes32 hashes below come from the live `/products` endpoint and match
+the `PRODUCT_ID` constants in each `Shield*.sol` on Base Sepolia.
+
+| Product name | Expected `asset` | Shield type | Duration |
+|---|---|---|---|
+| `FLASHBTC1H-001` | `BTC` | Flash crash on BTC | 1h |
+| `FLASHBTC4H-001` | `BTC` | Flash crash on BTC | 4h |
+| `FLASHBTC24-001` | `BTC` | Flash crash on BTC | 24h |
+| `FLASHBTC48-001` | `BTC` | Flash crash on BTC | 48h |
+| `FLASHETH1H-001` | `ETH` | Flash crash on ETH | 1h |
+| `FLASHETH24-001` | `ETH` | Flash crash on ETH | 24h |
+| `FLASHETH48-001` | `ETH` | Flash crash on ETH | 48h |
+| `MICRODEPEG-001` | `USDT` | Stablecoin micro-depeg | 7d |
+| `RATESHOCK-001` | `USDC` | Borrow-rate spike | 7d |
+
+## Recommended: pass `productName` and let the SDK resolve everything
+
+SDK 0.3.0 auto-resolves both the bytes32 productId hash AND the per-shield
+asset literal from the canonical name. You don't need to compute keccak
+yourself, and you can't accidentally pair `FLASHBTC1H-001` with `USDC`.
+
+```ts
+const policy = await lumina.policies.purchase({
+  productName: 'FLASHBTC1H-001',     // SDK resolves productId hash + asset='BTC'
+  buyer: '0xYourWalletAddress',
+  coverageAmount: '50000000',        // $50, paid in USDC
+})
+```
+
+## REST: pass `productName` to `POST /api/v1/policies`
+
+The same shortcut works at the API level. `asset` is now optional; if you
+omit it, the API auto-resolves from the registry.
+
+```bash
+curl -X POST https://lumina-api-production-ac85.up.railway.app/api/v1/policies \
+  -H "x-api-key: $LUMINA_API_KEY" \
+  -H "Content-Type: application/json" \
+  -H "Idempotency-Key: $(uuidgen)" \
+  -d '{
+    "productName":    "FLASHBTC1H-001",
+    "coverageAmount": "50000000",
+    "buyer":          "0xYourWalletAddress"
+  }'
+```
+
+## Sandbox: switch shields with `productName`
+
+`POST /sandbox/try` now resolves the asset from `productId` (default
+`FLASHBTC1H-001` → `BTC`) or accepts `productName` for friendlier switching:
+
+```bash
+curl -X POST https://lumina-api-production-ac85.up.railway.app/sandbox/try \
+  -H "Content-Type: application/json" \
+  -d '{"productName":"MICRODEPEG-001"}'   # → asset auto-resolves to USDT
+```
+
+## Advanced: explicit asset override
+
+If you want to bypass the auto-resolver (e.g. to reproduce a revert in
+testing), pass the bytes32 explicitly:
+
+```ts
+import { keccak256, toUtf8Bytes, encodeBytes32String } from 'ethers'
+
+await lumina.policies.purchase({
+  productId:    keccak256(toUtf8Bytes('FLASHBTC24-001')),
+  buyer:        '0xYourWalletAddress',
+  coverageAmount: '50000000',
+  asset:        'BTC',                       // MUST match the shield's literal
+})
+```
+
+The SDK accepts symbols (`'BTC' | 'ETH' | 'USDC' | 'USDT'`) and encodes them
+to bytes32. You can also pass a 32-byte hex string directly.
+
+## Common errors
+
+| Error | Cause | Fix |
+|---|---|---|
+| `InvalidAsset(bytes32)` | Sent the wrong asset for that shield | Use `productName` and let the SDK auto-resolve |
+| `unknown_product` (400) | productName not in the registry | Check the table above; only the 9 listed products are deployed |
+| `ProductNotConfigured` | productId hash doesn't exist on-chain | Verify the keccak256 preimage matches a canonical name |
+| `InvalidCoverage` | Below `$100` minimum (`MIN_PRICE_FOR_NEW_POLICIES`) | Increase `coverageAmount` to ≥ `100000000` |

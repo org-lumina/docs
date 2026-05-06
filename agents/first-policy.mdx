@@ -27,19 +27,21 @@ sequenceDiagram
   API-->>Agent: 201 { policyId, txHash, premiumPaid, ... }
 ```
 
-## SDK
+## SDK (recommended)
 
 ```ts
-import { keccak256, toUtf8Bytes } from 'ethers'
-
 const policy = await lumina.policies.purchase({
-  productId: keccak256(toUtf8Bytes('FLASHBTC24-001')),
+  productName: 'FLASHBTC24-001',               // SDK 0.3.0+ auto-resolves productId hash + asset='BTC'
   buyer: '0xYourWalletAddress',
   coverageAmount: '50000000',                  // $50 in 6-dec USDC
-  asset: 'USDC',                               // SDK encodes to bytes32 for you
   idempotencyKey: crypto.randomUUID(),         // strongly recommended
 })
 ```
+
+You can still pass `productId` (bytes32 hash) or `asset` (symbol or bytes32)
+explicitly — the SDK only auto-resolves when the field is omitted. See
+[Products and assets](/agents/products-and-assets) for the full table of
+expected asset literals per shield.
 
 ## curl
 
@@ -49,18 +51,18 @@ curl -X POST https://lumina-api-production-ac85.up.railway.app/api/v1/policies \
   -H "Content-Type: application/json" \
   -H "Idempotency-Key: $(uuidgen)" \
   -d '{
-    "productId":      "0xdc5bcc7d6e2e9ca89d46d4f6672db80985d5e86509243dcca44a4e87d871a7b9",
+    "productName":    "FLASHBTC24-001",
     "coverageAmount": "50000000",
-    "asset":          "0x5553444300000000000000000000000000000000000000000000000000000000",
     "buyer":          "0xYourWalletAddress"
   }'
 ```
 
 ## Field deep-dive
 
-- **`productId`** — bytes32 hash. Compute as `keccak256(toUtf8Bytes('FLASHBTC24-001'))`. Pre-computed values are listed in [Shields](/concepts/shields).
+- **`productName`** — canonical name (`FLASHBTC24-001`, `MICRODEPEG-001`, …). Preferred input — the API resolves both the `productId` hash AND the per-shield `asset` literal from it. See [Products and assets](/agents/products-and-assets) for the registered set.
+- **`productId`** — bytes32 hash. Optional alternative to `productName`. Compute as `keccak256(toUtf8Bytes('FLASHBTC24-001'))`. Pre-computed values are listed in [Shields](/concepts/shields).
 - **`coverageAmount`** — string of USDC base units. $50 = `"50000000"`. Always pass as a string to preserve precision.
-- **`asset`** — bytes32 of the asset symbol. `ethers.encodeBytes32String('USDC')` = `0x5553444300…0000`. The SDK accepts the symbol `'USDC'` and encodes for you.
+- **`asset`** — bytes32 of the asset symbol. **Optional** — the API auto-resolves the per-shield literal when omitted. Each shield expects a specific value (`BTC` for FlashBTC, `ETH` for FlashETH, `USDT` for MicroDepeg, `USDC` for RateShock); sending the wrong one reverts with `InvalidAsset(bytes32)`.
 - **`buyer`** — the wallet that pays the USDC premium (NOT the relayer). Must hold ≥ premium and have approved the relayer-side spender.
 
 ## Idempotency

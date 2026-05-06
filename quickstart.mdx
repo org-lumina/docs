@@ -46,13 +46,10 @@ console.log('contracts:', Object.keys(health.contracts))   // coverRouter, …
 ## 4. Buy a $50 policy
 
 ```ts
-import { keccak256, toUtf8Bytes } from 'ethers'
-
 const policy = await lumina.policies.purchase({
-  productId: keccak256(toUtf8Bytes('FLASHBTC24-001')),
+  productName: 'FLASHBTC1H-001',                // SDK 0.3.0+ auto-resolves productId hash + asset='BTC'
   buyer: '0xYourWalletAddress',                 // wallet that pays USDC premium
   coverageAmount: '50000000',                   // $50 in 6-dec USDC
-  asset: 'USDC',
 })
 
 console.log('policyId:', policy.policyId, 'tx:', policy.txHash)
@@ -60,6 +57,10 @@ console.log('policyId:', policy.policyId, 'tx:', policy.txHash)
 
 That's it. The relayer paid the gas, your buyer wallet paid the USDC premium,
 and you got back a `policyId` you can reference for triggers and bonds.
+
+The SDK derives both the `productId` keccak hash and the per-shield `asset`
+literal from `productName`. See [Products and assets](/agents/products-and-assets)
+for the full registry and why hardcoding `asset: 'USDC'` reverts 7-of-9 shields.
 
 <Card title="Next: Browse strategies →" icon="arrow-right" href="/agents/strategies" />
 
