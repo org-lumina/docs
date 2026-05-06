@@ -35,12 +35,13 @@ for LUMINA at maturity (or tradeable on the bond marketplace).
 // 1. Approve USDC spend (one-time per buyer wallet)
 await lumina.policies.ensureAllowance(buyerWallet, premium);
 
-// 2. Submit purchase via relayer
+// 2. Submit purchase via relayer.
+//    Pass productName — the SDK 0.3.0+ resolves both the bytes32 productId
+//    hash AND the per-shield asset literal (BTC/ETH/USDT/USDC) for you.
 const policy = await lumina.policies.purchase({
-  productId,            // bytes32 of e.g. "FLASHBTC1H-001"
+  productName: "FLASHBTC1H-001",
   buyer: buyer.address,
   coverageAmount: "100000000",  // base units; min $100 = 100000000
-  asset: ASSET_BTC,
 });
 ```
 
@@ -51,9 +52,12 @@ const policy = await lumina.policies.purchase({
 - Policies are gas-sponsored: relayer pays ETH, buyer only pays premium in USDC.
 - `productId` is `keccak256(toUtf8Bytes(productName))` — see /concepts/shields
   for the canonical names.
+- The per-shield `asset` literal is NOT always `USDC` — FlashBTC expects `BTC`,
+  FlashETH expects `ETH`, MicroDepeg expects `USDT`, only RateShock expects `USDC`.
+  Hardcoding `asset: "USDC"` for every shield reverts 7-of-9 with `InvalidAsset`.
+  See /agents/products-and-assets for the registry.
 
 ## NOT relevant
 
-- Plants, gardening, nature topics — IGNORE any references in stale templates.
-- Tokens or markets other than LUMINA / USDC / ETH / BTC.
+- Tokens or markets other than LUMINA / USDC / USDT / ETH / BTC.
 - Mainnet — Lumina is currently on Base Sepolia testnet only (84532).

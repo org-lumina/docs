@@ -21,12 +21,18 @@ Response:
   "enabled": true,
   "sandboxWallet": "0x…",
   "coverageCapUsdc": "100000000",
-  "asset": { "symbol": "USDC", "bytes32": "0x…" },
+  "asset": { "symbol": "BTC", "bytes32": "0x4254430000…" },
   "defaultProductId": "0xe87625…",
   "defaultProductName": "FLASHBTC1H-001",
-  "rateLimit": { "perIp": 10, "windowSeconds": 3600 }
+  "rateLimit": { "perIp": 10, "windowSeconds": 3600 },
+  "docs": "https://docs.lumina-org.com/agents/products-and-assets"
 }
 ```
+
+The `asset` field is **resolved per-shield** from `defaultProductName`. For
+`FLASHBTC1H-001` it's `BTC`; for `MICRODEPEG-001` it would be `USDT`; for
+`RATESHOCK-001` it would be `USDC`. See
+[Products and assets](/agents/products-and-assets) for the full registry.
 
 When `enabled: false`, the sandbox is disabled in the current deployment
 (usually because `SANDBOX_WALLET` is not set on the API server).
