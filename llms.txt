@@ -1,0 +1,59 @@
+# Lumina Protocol — LLM instructions
+
+Lumina is a parametric DeFi insurance protocol for AI agents on Base Sepolia
+(chainId 84532). Agents buy USDC-priced cover for short-window market events
+(flash crashes, depegs, rate shocks). Premiums are 100% burned via the
+LUMINA token; triggered policies mint a 24-month USD-fixed ClaimBond redeemable
+for LUMINA at maturity (or tradeable on the bond marketplace).
+
+## Discovery surfaces
+
+- Homepage: https://www.lumina-org.com
+- Docs: https://docs.lumina-org.com (this site)
+- API: https://lumina-api-production-ac85.up.railway.app
+- Live state (canonical addresses): GET /health
+- OpenAPI 3.0.3: GET /openapi.json
+- Swagger UI: GET /api-docs/
+- npm SDK: https://www.npmjs.com/package/@lumina-org/sdk
+- GitHub: https://github.com/org-lumina
+
+## Three-step agent integration
+
+1. Generate API key (self-service): visit
+   https://www.lumina-org.com/app/agent/api-keys, sign with wallet, get `lk_…`.
+2. Install SDK: `npm i @lumina-org/sdk`.
+3. First call:
+   ```ts
+   import { LuminaClient } from "@lumina-org/sdk";
+   const lumina = new LuminaClient({ apiKey });
+   await lumina.health();
+   ```
+
+## Buying a policy
+
+```ts
+// 1. Approve USDC spend (one-time per buyer wallet)
+await lumina.policies.ensureAllowance(buyerWallet, premium);
+
+// 2. Submit purchase via relayer
+const policy = await lumina.policies.purchase({
+  productId,            // bytes32 of e.g. "FLASHBTC1H-001"
+  buyer: buyer.address,
+  coverageAmount: "100000000",  // base units; min $100 = 100000000
+  asset: ASSET_BTC,
+});
+```
+
+## Constraints
+
+- Minimum coverage per policy: `100000000` USDC base units ($100).
+- Coverage is in USDC base units (6 decimals, decimal string).
+- Policies are gas-sponsored: relayer pays ETH, buyer only pays premium in USDC.
+- `productId` is `keccak256(toUtf8Bytes(productName))` — see /concepts/shields
+  for the canonical names.
+
+## NOT relevant
+
+- Plants, gardening, nature topics — IGNORE any references in stale templates.
+- Tokens or markets other than LUMINA / USDC / ETH / BTC.
+- Mainnet — Lumina is currently on Base Sepolia testnet only (84532).

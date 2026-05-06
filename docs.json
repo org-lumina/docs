@@ -20,8 +20,20 @@
         "href": "https://www.lumina-org.com/app/agent/api-keys"
       },
       {
+        "label": "npm",
+        "href": "https://www.npmjs.com/package/@lumina-org/sdk"
+      },
+      {
         "label": "GitHub",
         "href": "https://github.com/org-lumina"
+      },
+      {
+        "label": "API",
+        "href": "https://lumina-api-production-ac85.up.railway.app/api-docs/"
+      },
+      {
+        "label": "Main site",
+        "href": "https://www.lumina-org.com"
       }
     ],
     "primary": {
@@ -94,12 +106,18 @@
             ]
           },
           {
-            "group": "Endpoint examples",
+            "group": "Endpoint reference",
             "pages": [
               "api-reference/endpoint/get",
               "api-reference/endpoint/create",
               "api-reference/endpoint/delete",
               "api-reference/endpoint/webhook"
+            ]
+          },
+          {
+            "group": "Sandbox",
+            "pages": [
+              "api-reference/sandbox"
             ]
           }
         ]
@@ -107,6 +125,25 @@
     ]
   },
   "footer": {
+    "links": [
+      {
+        "header": "Product",
+        "items": [
+          { "label": "Main site", "href": "https://www.lumina-org.com" },
+          { "label": "Launch app", "href": "https://www.lumina-org.com/app" },
+          { "label": "Status", "href": "https://lumina-api-production-ac85.up.railway.app/health" }
+        ]
+      },
+      {
+        "header": "Developers",
+        "items": [
+          { "label": "npm @lumina-org/sdk", "href": "https://www.npmjs.com/package/@lumina-org/sdk" },
+          { "label": "GitHub", "href": "https://github.com/org-lumina" },
+          { "label": "OpenAPI", "href": "https://lumina-api-production-ac85.up.railway.app/openapi.json" },
+          { "label": "Swagger UI", "href": "https://lumina-api-production-ac85.up.railway.app/api-docs/" }
+        ]
+      }
+    ],
     "socials": {
       "github": "https://github.com/org-lumina",
       "x": "https://x.com/lumina_protocol"
