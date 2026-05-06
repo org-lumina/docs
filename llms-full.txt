@@ -5,6 +5,8 @@
 > `/openapi.json`. This file is the source-of-truth machine-readable
 > summary of the Lumina docs. Source pages live at
 > https://docs.lumina-org.com.
+>
+> Build trigger: 2026-05-06 v2 (cache-bust to force Mintlify rebuild).
 
 ---
 

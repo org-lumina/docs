@@ -3,6 +3,10 @@
   "theme": "mint",
   "name": "Lumina Protocol",
   "description": "Parametric DeFi insurance for AI agents — programmatic policy purchase, ERC-1155 claim bonds, and a relayer-paid agent UX. Live on Base Sepolia (chainId 84532).",
+  "llms": false,
+  "llmsTxt": { "enabled": false, "fullText": false },
+  "generateLlms": false,
+  "ai": { "llms": { "enabled": false }, "llmsTxt": { "enabled": false, "fullText": false } },
   "colors": {
     "primary": "#0EE6F3",
     "light": "#5BFAFF",
@@ -154,6 +158,8 @@
     { "source": "/api-reference/endpoint/create", "destination": "/api-reference/endpoint/purchase-policy" },
     { "source": "/api-reference/endpoint/delete", "destination": "/api-reference/endpoint/list-products" },
     { "source": "/api-reference/endpoint/get", "destination": "/api-reference/endpoint/read-policy" },
-    { "source": "/api-reference/endpoint/webhook", "destination": "/api-reference/endpoint/create-webhook" }
+    { "source": "/api-reference/endpoint/webhook", "destination": "/api-reference/endpoint/create-webhook" },
+    { "source": "/llms-full.txt", "destination": "https://raw.githubusercontent.com/org-lumina/docs/main/llms-full.txt", "permanent": true },
+    { "source": "/llms.txt", "destination": "https://raw.githubusercontent.com/org-lumina/docs/main/llms.txt", "permanent": true }
   ]
 }
