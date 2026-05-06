@@ -1,0 +1,141 @@
+---
+title: "Bond Marketplace"
+description: "Trade ClaimBonds before maturity. Sellers exit early in USDC; buyers redeem in $LUMINA at 730d."
+sidebarTitle: "Marketplace"
+icon: "store"
+---
+
+The Lumina Bond Marketplace is the secondary market for `ClaimBond` ERC-1155
+tokens. Sellers who can't (or don't want to) wait until maturity can sell
+their bonds for USDC right now; buyers who want exposure to the redemption
+upside can pick them up at a discount and redeem at 730d for `$LUMINA`.
+
+## TL;DR
+
+- ERC-1155 ClaimBonds (`$1` face value/unit) are tradeable for USDC at any
+  time before maturity.
+- Maker fee `150 bps` + taker fee `150 bps` — total `3%` on every fill.
+- Anti-spam floor: `minPricePerUnit = $1` (1_000_000 raw, 6-dec USDC).
+- Redemption at maturity (730d) pays out in **`$LUMINA`**, not USDC. The
+  marketplace itself prices and settles in **USDC**.
+
+## What is the marketplace?
+
+Bonds in Lumina are minted to a wallet when a policy's parametric trigger
+fires. They're an obligation to pay the holder `$LUMINA` at maturity (730
+days). For agents that need liquidity sooner — to rotate into a new
+position, to cover op-ex, or simply because they don't want 2-year duration
+risk — waiting isn't an option.
+
+The marketplace solves that. It's a fully on-chain order-book where any
+holder can list a bond at a chosen `pricePerUnit` (in USDC), and any
+buyer can match. Sellers exit in USDC immediately; buyers acquire bonds
+they'll redeem for `$LUMINA` at maturity. The protocol takes a small fee
+from both sides to fund maintenance and reserves.
+
+Listings are owned by the seller until filled or cancelled. Bond ownership
+is escrowed in the marketplace contract on `list()` and atomically
+transferred to the buyer on `buy()`.
+
+## How it works
+
+1. **Policy bought.** Agent pays USDC premium and receives an active policy.
+2. **Trigger fires.** The Shield mints a `ClaimBond` (ERC-1155) to the
+   buyer's wallet.
+3. **Seller lists.** One-time `marketplace.approveBonds()` (ERC-1155
+   approval), then `marketplace.list({ bondId, amount, pricePerUnit, expiresAt })`.
+   The bond units are escrowed in the marketplace contract.
+4. **Buyer browses & fills.** Reads `marketplace.listings()` /
+   `marketplace.listing(id)` / `marketplace.estimateBuyPrice(...)`,
+   approves USDC for the total + taker fee via `marketplace.approve(usdcAmount)`,
+   then calls `marketplace.buy({ listingId, amount })`.
+5. **Seller paid.** Settlement is atomic: seller receives
+   `pricePerUnit * amount * (1 - 150 bps)` in USDC; protocol takes 150 bps
+   maker + 150 bps taker.
+6. **Buyer holds → redeems.** At maturity (730d epoch), buyer calls
+   `redeemBond` on the bond contract and receives `$LUMINA`.
+
+## Fees
+
+| Role | Basis points | Percentage |
+|---|---|---|
+| Maker (seller) | `150 bps` | `1.5%` |
+| Taker (buyer) | `150 bps` | `1.5%` |
+
+Total takeaway: **3% on every fill** — `1.5%` deducted from the seller's
+proceeds and `1.5%` added to the buyer's USDC outlay on top of the listing
+notional.
+
+## Anti-spam floor
+
+`minPricePerUnit` is enforced on-chain at `1_000_000` raw (`$1` in 6-dec
+USDC). Any `list()` call with `pricePerUnit` below this floor reverts. This
+prevents an attacker from spamming the order book with sub-cent listings to
+grief frontends and indexers. (Synced with the M-3 fix deployment.)
+
+## For AI agents
+
+```ts
+import { LuminaClient } from '@lumina-org/sdk'
+
+const lumina = new LuminaClient({ apiKey: process.env.LUMINA_API_KEY! })
+
+// One-time approval for the marketplace to move bond units on your behalf.
+await lumina.marketplace.approveBonds()
+
+// Sell 50 units of bond #202805 at $0.97/unit, expires in 7 days.
+await lumina.marketplace.list({
+  bondId: '202805',
+  amount: '50',
+  pricePerUnit: '970000',                          // 0.97 in 6-dec USDC
+  expiresAt: Math.floor(Date.now() / 1000) + 7 * 86400,
+})
+```
+
+To buy, browse listings and fill atomically:
+
+```ts
+const listings = await lumina.marketplace.listings({ sortBy: 'price-asc' })
+const target = listings[0]
+
+const quote = await lumina.marketplace.estimateBuyPrice({
+  listingId: target.id, amount: '10',
+})
+
+await lumina.marketplace.approve(quote.totalUsdc)   // approve USDC including taker fee
+await lumina.marketplace.buy({ listingId: target.id, amount: '10' })
+```
+
+Available SDK methods (in `@lumina-org/sdk` `0.5.0`):
+`marketplace.listings`, `marketplace.listing`, `marketplace.stats`,
+`marketplace.history`, `marketplace.myListings`, `marketplace.list`,
+`marketplace.buy`, `marketplace.cancel`, `marketplace.approve`,
+`marketplace.approveBonds`.
+
+## For humans
+
+Prefer the UI? The hosted marketplace lives at
+[lumina-org.com/app/human/marketplace](https://www.lumina-org.com/app/human/marketplace).
+
+## API endpoints
+
+| Method | Path | Status |
+|---|---|---|
+| GET | `/api/v1/marketplace/listings` | Existing |
+| POST | `/api/v1/marketplace/list` | Existing |
+| POST | `/api/v1/marketplace/buy` | Existing |
+| GET | `/api/v1/marketplace/stats` | New |
+| GET | `/api/v1/marketplace/history` | New |
+| GET | `/api/v1/marketplace/listings/:id` | New |
+
+## Smart contract
+
+The marketplace is deployed on Base Sepolia at
+[`0xfaC56692c626718aC8953A3d5fAE67fac2f1Be6E`](https://sepolia.basescan.org/address/0xfaC56692c626718aC8953A3d5fAE67fac2f1Be6E).
+The live address is also exposed via the
+[`/health`](https://lumina-api-production-ac85.up.railway.app/health)
+endpoint — agents should always read it from there rather than hard-coding.
+
+> **Note** — Premium for **policies** is paid in USDC. Bonds in the
+> **marketplace** are also bought/sold in USDC. **Redeem at maturity** is
+> in `$LUMINA` tokens — not USDC.
