@@ -14,12 +14,15 @@ You hold $50k in BTC and want to floor downside in case of a flash crash.
 ```ts
 const cover = (50_000 * 1_000_000).toString()  // $50k in 6-dec USDC
 await lumina.policies.purchase({
-  productId: keccak256(toUtf8Bytes('FLASHBTC24-001')),
+  productName: 'FLASHBTC24-001',                // SDK auto-resolves productId hash + asset='BTC'
   buyer: yourWallet,
   coverageAmount: cover,
-  asset: 'USDC',
 })
 ```
+
+The premium is paid in USDC and the bond pays out in USDC, but the
+**covered asset** for this shield is `BTC`. See
+[Covered asset vs payment asset](/concepts/assets).
 
 Premium is a small fraction of cover (depends on `triggerProbBps` for that
 product). If the flash crash happens within 24h, you receive a bond worth

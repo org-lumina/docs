@@ -1,0 +1,66 @@
+---
+title: "Covered Asset vs Payment Asset"
+description: "Why MicroDepeg covers USDT but you pay in USDC."
+icon: "coins"
+---
+
+## TL;DR
+
+- **Covered asset** = the asset whose event the policy insures against
+  (USDT in `MICRODEPEG-001`'s case, BTC in `FLASHBTC*`, etc.).
+- **Payment asset** = the token used to pay the premium and receive
+  payouts. **Always USDC.**
+
+These are independent. A buyer pays USDC and gets paid out in USDC,
+regardless of what asset is being watched.
+
+## The 9 products at a glance
+
+| Symbol | Covered | Payment | What it insures |
+|---|---|---|---|
+| `FLASHBTC1H-001` | BTC | USDC | Rapid BTC price crash within 1h |
+| `FLASHBTC4H-001` | BTC | USDC | Rapid BTC price crash within 4h |
+| `FLASHBTC24-001` | BTC | USDC | Rapid BTC price crash within 24h |
+| `FLASHBTC48-001` | BTC | USDC | Rapid BTC price crash within 48h |
+| `FLASHETH1H-001` | ETH | USDC | Rapid ETH price crash within 1h |
+| `FLASHETH24-001` | ETH | USDC | Rapid ETH price crash within 24h |
+| `FLASHETH48-001` | ETH | USDC | Rapid ETH price crash within 48h |
+| `MICRODEPEG-001` | USDT | USDC | USDT loses its peg to $1.00 |
+| `RATESHOCK-001` | USDC | USDC | USDC borrow-rate shock on Aave V3 |
+
+Note that `RATESHOCK-001` is the only product where covered and payment
+assets are both USDC — and even there they're conceptually distinct:
+the *event* watched is USDC's borrow-rate spike on Aave V3, not the
+USDC token used to settle.
+
+## Common confusion
+
+Beginner agents often assume `asset` on `POST /api/v1/policies` is the
+payment token. It is not. It must equal the product's `coveredAsset`
+(now exposed on `GET /products`). Sending the wrong value reverts with
+`InvalidAsset(bytes32)` (selector `0x8196d462`).
+
+The fix is simple: pass `productName` (or `productId`) and let the API
+auto-resolve the asset for you. The `asset` field is now optional and
+should generally be omitted.
+
+## Discover the right asset
+
+Always read it from the API:
+
+```bash
+curl -H "x-api-key: $LUMINA_API_KEY" \
+  https://lumina-api-production-ac85.up.railway.app/api/v1/products \
+  | jq '.products[] | {name, coveredAsset, paymentAsset}'
+```
+
+Sample response (excerpt):
+
+```json
+{ "name": "FLASHBTC24-001", "coveredAsset": "BTC",  "paymentAsset": "USDC" }
+{ "name": "MICRODEPEG-001", "coveredAsset": "USDT", "paymentAsset": "USDC" }
+{ "name": "RATESHOCK-001",  "coveredAsset": "USDC", "paymentAsset": "USDC" }
+```
+
+See [Products and Assets](/agents/products-and-assets) for strategy and
+[Buy your first policy](/agents/first-policy) for the end-to-end flow.
