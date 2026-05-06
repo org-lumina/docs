@@ -1,81 +1,74 @@
 ---
-title: "Quickstart"
-description: "Start building awesome documentation in minutes"
-icon: 'rocket'
+title: "5-minute quickstart"
+description: "Install the SDK, mint your first API key, buy a $50 policy."
+icon: "rocket"
 ---
 
-## Get started in three steps
+This is the shortest path from zero to a real on-chain policy. Five minutes if
+your wallet is funded with Base Sepolia ETH (for the onboarding signature only —
+the protocol itself never asks the agent for gas).
 
-Get your documentation site running locally and make your first customization.
+## 1. Install the SDK
 
-### Step 1: Set up your local environment
+```bash
+npm install @lumina-org/sdk ethers
+```
 
-<AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
-    
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
-  </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
-    
-    <Tip>Your preview updates automatically as you edit files.</Tip>
-  </Accordion>
-</AccordionGroup>
+## 2. Mint an API key (self-service)
 
-### Step 2: Deploy your changes
+Sign one message with your wallet — the API verifies and returns a
+fresh `lk_…` key.
 
-<AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
-    
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
-</Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
+```ts
+import { Wallet } from 'ethers'
+import { LuminaClient } from '@lumina-org/sdk'
 
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
+const wallet = new Wallet(process.env.PRIVATE_KEY!)
+const lumina = new LuminaClient({ apiKey: '' })  // empty for onboard
 
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
-  </Accordion>
-</AccordionGroup>
+const { apiKey } = await lumina.agent.onboard(wallet, { label: 'my-bot' })
+console.log('Save this NOW (shown only once):', apiKey)
+```
 
-### Step 3: Go live
+The signed message is `Lumina onboarding for {address} at {timestamp}`. The
+SDK builds it for you. Caps: 3 active keys per wallet, 10 onboard attempts
+per hour per IP, ±5 minute timestamp window.
 
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
+## 3. Verify connectivity
 
-## Next steps
+```ts
+const lumina = new LuminaClient({ apiKey: process.env.LUMINA_API_KEY! })
+const health = await lumina.health()
+console.log('chainId:', health.chain.chainId)              // 84532
+console.log('contracts:', Object.keys(health.contracts))   // coverRouter, …
+```
 
-Now that you have your docs running, explore these key features:
+## 4. Buy a $50 policy
 
-<CardGroup cols={2}>
+```ts
+import { keccak256, toUtf8Bytes } from 'ethers'
 
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
-</Card>
+const policy = await lumina.policies.purchase({
+  productId: keccak256(toUtf8Bytes('FLASHBTC24-001')),
+  buyer: '0xYourWalletAddress',                 // wallet that pays USDC premium
+  coverageAmount: '50000000',                   // $50 in 6-dec USDC
+  asset: 'USDC',
+})
 
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
-</Card>
+console.log('policyId:', policy.policyId, 'tx:', policy.txHash)
+```
 
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
-</Card>
+That's it. The relayer paid the gas, your buyer wallet paid the USDC premium,
+and you got back a `policyId` you can reference for triggers and bonds.
 
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
-</Card>
+<Card title="Next: Browse strategies →" icon="arrow-right" href="/agents/strategies" />
 
-</CardGroup>
+## Try it without an account
 
-<Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
-</Note>
+If you don't even want to go through onboarding, hit the sandbox:
+
+```bash
+curl -X POST https://lumina-api-production-ac85.up.railway.app/sandbox/try
+```
+
+Server-fixed buyer + `$1` coverage. Useful for first-call demos. 10 req/h/IP.

@@ -1,0 +1,59 @@
+---
+title: "LuminaClient"
+description: "The top-level client and its sub-resources."
+icon: "code"
+---
+
+## Construction
+
+```ts
+import { LuminaClient } from '@lumina-org/sdk'
+
+const lumina = new LuminaClient({
+  apiKey: process.env.LUMINA_API_KEY!,
+  baseUrl: 'https://lumina-api-production-ac85.up.railway.app',
+})
+```
+
+Construction is synchronous and never makes a network call. Call `.health()`
+to verify the API is reachable.
+
+## Sub-resources
+
+| Property | Class | Endpoints |
+|---|---|---|
+| `lumina.products` | `ProductsAPI` | `GET /products`, `GET /products/:id`, `GET /products/:id/quote` |
+| `lumina.policies` | `PoliciesAPI` | `GET/POST /api/v1/policies`, `GET /policies/:prod/:id` |
+| `lumina.bonds` | `BondsAPI` | `GET /api/v1/bonds` |
+| `lumina.marketplace` | `MarketplaceAPI` | `GET /api/v1/marketplace/listings` |
+| `lumina.agent` | `AgentAPI` | `POST /api/v1/agent/onboard`, `GET/DELETE /api/v1/agent/keys` |
+| `lumina.webhooks` | `WebhooksAPI` | `POST/GET/DELETE /api/v1/webhooks` |
+| `lumina.sandbox` | `SandboxAPI` | `GET /sandbox/info`, `POST /sandbox/try` |
+
+## Errors
+
+Every non-2xx response throws `LuminaError`:
+
+```ts
+import { LuminaError } from '@lumina-org/sdk'
+
+try {
+  await lumina.policies.purchase({ … })
+} catch (err) {
+  if (err instanceof LuminaError) {
+    err.status   // HTTP status code (number)
+    err.code     // API error code (string), e.g. 'invalid_api_key'
+    err.message  // human-readable message
+  }
+}
+```
+
+Network-level errors (connection refused, timeout) are also wrapped as
+`LuminaError` with `status === 0` and `code === 'network_error'`.
+
+## Custom fetch (advanced)
+
+Both Node 18+ and modern browsers ship `globalThis.fetch`, which is what the
+SDK uses. There's no override hook on the client itself; if you need to
+intercept requests (for instrumentation, mock-in-test, etc.) overwrite
+`globalThis.fetch` before constructing the client.

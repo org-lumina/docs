@@ -1,0 +1,48 @@
+---
+title: "LUMINA token"
+description: "The protocol's native token: governance, fee burn, vesting."
+icon: "coin"
+---
+
+LUMINA is the protocol's native ERC-20. Three roles:
+
+1. **Governance.** Parameter updates (bond maturities, payout ratios, oracle
+   keys) are voted by LUMINA holders.
+2. **Fee burn.** A fraction of every premium is converted to LUMINA via TWAP
+   and burned. Auto-burn triggers on every $500 of accumulated USDC fees
+   (see [Auto-burn](/concepts/lumina-token#auto-burn)).
+3. **Bond pricing.** When a policy is purchased, the protocol snapshots the
+   LUMINA/USD price for that policy. Payouts use this snapshot rather than the
+   live price, protecting buyers from oracle drift between purchase and trigger
+   (audit fix H-6).
+
+## Auto-burn
+
+`TWAPBurner V2` swaps accumulated USDC fees → LUMINA via DEX (Uniswap on
+Base) and burns the resulting LUMINA. The swap uses a 1-hour TWAP rather than
+spot to mitigate MEV.
+
+The burn fires automatically:
+- After every accumulated $500 in USDC fees, OR
+- Every 50 successful policy purchases (whichever comes first)
+
+This means there's no operator-driven schedule; the burn rate tracks
+protocol usage exactly.
+
+## Vesting
+
+The founder allocation is locked in `FounderVesting` with a 31-day month
+calculation (the only vesting contract that uses 31-day months instead of
+the protocol's standard 30-day `MonthCalculator` library — the longer cliff
+benefits the protocol). Total cliff duration is on-chain; consult the
+contract for current vesting state.
+
+## Live token address
+
+Always pull from `/health.contracts.luminaToken` rather than hardcoding —
+the address changes between V5.x deploys until mainnet.
+
+```bash
+curl -s https://lumina-api-production-ac85.up.railway.app/health \
+  | jq .contracts.luminaToken
+```

@@ -1,0 +1,36 @@
+---
+title: "Audits"
+description: "Internal audit findings and the fix branches that landed them."
+icon: "magnifying-glass"
+---
+
+The V5.1 internal audit catalogued 5 critical, 14 high-severity, and a long
+tail of medium / low findings against the protocol. Verdict: **NEEDS-FIXES**
+at commit `6a3ce42`.
+
+Most of the high-severity findings have been fixed in dedicated branches. The
+mainnet rollout is gated on completion of the remaining items.
+
+## Status (cross-branch)
+
+| Severity | Found | Fixed | In-flight |
+|---|---|---|---|
+| Critical | 5 | 4 | 1 (C-X — see below) |
+| High | 14 | 6 | 8 |
+| Medium | ~20 | 12 | rest |
+| Low / preventive | ~5 | 3 | 2 |
+
+A live status table is maintained at
+[`org-lumina/LUMINA-PROTOCOL/AUDIT_STATUS.md`](https://github.com/org-lumina/LUMINA-PROTOCOL/blob/main/AUDIT_STATUS.md)
+in the protocol repo (when present).
+
+## Independent audit
+
+An independent audit by a third-party firm is planned before mainnet. The
+internal audit is what gates the *internal* sign-off for testnet promotion.
+
+## Reporting a vulnerability
+
+If you find something we haven't, please don't open a public issue. Email
+**security@lumina-org.com** with reproduction steps. Bounties are scoped to
+mainnet contracts (Sepolia mocks excluded).

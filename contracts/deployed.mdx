@@ -1,0 +1,41 @@
+---
+title: "Deployed contracts"
+description: "Live addresses on Base Sepolia. Always cross-check against /health."
+icon: "address-book"
+---
+
+These addresses change between V5.x deploys. The single source of truth is
+[`/health`](https://lumina-api-production-ac85.up.railway.app/health) — never
+hardcode.
+
+## Base Sepolia (chainId 84532)
+
+Snapshot on **2026-05-05** — verify before integrating:
+
+```bash
+curl -s https://lumina-api-production-ac85.up.railway.app/health | jq .contracts
+```
+
+| Contract | Address (verify against /health) |
+|---|---|
+| coverRouter | `0xebC3A783477FbD2720C024e16A8d63B8Db983D84` |
+| policyManager | `0xd9732A8d6Cf5266Dd896B825E78E387B7Dd2c379` |
+| bondVault | `0x101F92fC506C1e60A2A0dD01eA29597EBf222d2B` |
+| claimBond | `0x3d2F5DB2505367D00ef81c51AD3cA66159271730` |
+| marketplace | `0xfaC56692c626718aC8953A3d5fAE67fac2f1Be6E` |
+| usdc (mock) | `0xD944d8e5D8329994D83950872Ec210891d3Ab6AE` |
+| luminaToken | `0x8A0FDc2126eb9b0c88D17711D62713A1c06CF7Ab` |
+
+## Relayer
+
+The off-chain wallet authorized to call `purchasePolicyFor` on behalf of agents:
+
+```bash
+curl -s https://lumina-api-production-ac85.up.railway.app/health | jq .relayer
+# { "address": "0x168dC7…", "balanceWei": "19987717186270949" }
+```
+
+## Mainnet
+
+Not yet deployed. Mainnet rollout is gated on completion of audit fixes
+(see [audits](/contracts/audits)).

@@ -1,0 +1,53 @@
+---
+title: "API status"
+description: "Live system health — pulled from /health on every page load."
+icon: "heart-pulse"
+---
+
+The Lumina API exposes a single status endpoint. There's no separate status
+page provider — `/health` is the source of truth, and you can poll it
+directly:
+
+```bash
+curl https://lumina-api-production-ac85.up.railway.app/health
+```
+
+## Live response
+
+<Frame>
+  <iframe
+    src="https://lumina-api-production-ac85.up.railway.app/health"
+    height="500"
+    style={{ width: "100%", border: "1px solid #ddd", borderRadius: "8px" }}
+  />
+</Frame>
+
+## What the fields mean
+
+| Field | Meaning |
+|---|---|
+| `status` | `ok` if the service is processing requests; `degraded` otherwise |
+| `chain.chainId` | Always 84532 (Base Sepolia) on the current deploy |
+| `chain.block` | The most recent block the API has observed via RPC |
+| `chain.rpcConnected` | `false` indicates the upstream RPC is unreachable — buys/triggers will start failing soon |
+| `relayer.address` | The wallet that signs `purchasePolicyFor` |
+| `relayer.balanceWei` | Refresh budget for gas. Below ~0.005 ETH means re-fund is overdue |
+| `contracts` | Map of canonical contract addresses |
+
+## Programmatic monitoring
+
+```ts
+import { LuminaClient } from '@lumina-org/sdk'
+
+const lumina = new LuminaClient({ apiKey: '' })
+const h = await lumina.health()
+
+if (!h.chain.rpcConnected) alert('RPC down')
+if (BigInt(h.relayer.balanceWei) < 5_000_000_000_000_000n) alert('relayer low gas')
+```
+
+## Schema
+
+The full response schema is in the OpenAPI spec at
+[`/openapi.json`](https://lumina-api-production-ac85.up.railway.app/openapi.json)
+(search `components.schemas.Health`).

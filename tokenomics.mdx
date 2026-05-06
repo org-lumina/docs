@@ -1,0 +1,55 @@
+---
+title: "Tokenomics"
+description: "LUMINA supply, allocation, vesting, fee burn."
+icon: "coin"
+---
+
+This page consolidates the LUMINA token's supply mechanics. For the
+contract-level deep-dive, see [/concepts/lumina-token](/concepts/lumina-token).
+
+## Supply
+
+LUMINA is the protocol's native ERC-20 with capped initial supply. The
+deflationary mechanism is the [auto-burn](#auto-burn) — supply only
+*decreases* over time as protocol usage grows.
+
+## Allocation (V5.x)
+
+| Bucket | Purpose | Vesting |
+|---|---|---|
+| Founder | Team alignment | Locked in `FounderVesting`, 31-day months |
+| Treasury | Operations & grants | Multisig-controlled |
+| Liquidity | DEX market-making | Unlocked, deployed to Uniswap |
+| Community | Airdrops, incentives | Released by governance vote |
+
+Exact percentages are subject to governance updates; verify against the
+on-chain `LuminaToken.totalSupply()` and the `FounderVesting` /
+`TreasuryVesting` contracts.
+
+## Auto-burn mechanics
+
+Every premium paid generates a small fee that accrues to the protocol in
+USDC. When the accumulated fee crosses **$500** OR after **50 successful
+purchases** (whichever first), `TWAPBurner V2` triggers:
+
+1. Read 1-hour LUMINA/USDC TWAP from the DEX (mitigates MEV).
+2. Swap accumulated USDC fees → LUMINA.
+3. Burn the resulting LUMINA via `LuminaToken.burn()`.
+
+The burn fires automatically — there's no operator schedule. The rate tracks
+protocol usage 1:1.
+
+## Buyback engine (planned)
+
+A separate `BuybackEngine` (audit fix M-10 added commit-reveal MEV protection)
+will handle larger periodic buybacks from the treasury. Operationally, these
+larger buys go through a private mempool to mitigate sandwich attacks.
+
+## Sustainability model
+
+The protocol is designed to be self-funding once usage reaches a target
+threshold:
+
+- Premiums fund both the bond vault (for payouts) and the burn engine.
+- The vault solvency floor (audit fix M-11) ensures `burnFromReserves` never
+  starves the bond payout queue.

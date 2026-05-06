@@ -1,0 +1,96 @@
+---
+title: "Architecture"
+description: "How the contracts fit together."
+icon: "diagram-project"
+---
+
+## High-level
+
+```
+   Agent ──► API ──► Relayer ──► CoverRouterV2 ──► PolicyManagerV2
+                                                        │
+                                                        ▼
+                                                     Shield (per product)
+                                                        │
+                                                        ▼ on trigger
+                                                     BondVault ──► ClaimBond ERC-1155
+                                                        │
+                                                        ▼ on redemption
+                                                     USDC ──► holder
+```
+
+## Contracts
+
+### CoverRouterV2
+
+- Single entry point for policy purchases (both relayer-paid and direct).
+- `purchasePolicyFor(productId, cover, asset, buyer)` — relayer-only.
+- `purchasePolicy(productId, cover, asset)` — direct (msg.sender = buyer).
+- Maintains the relayer allowlist via `setRelayer(addr, true)`.
+- Dual pause: local `paused()` flag + global `GlobalPauseRegistry` (audit fix M-7).
+
+### PolicyManagerV2
+
+- Stores policy state (`policyId → buyer, cover, premium, priceSnapshot, …`).
+- `priceSnapshot` (audit fix H-6) — LUMINA/USD captured at purchase, used by
+  BondVault on trigger to protect buyers from oracle drift.
+- `productActive` mapping (audit fix H-5) — admin can deactivate products.
+
+### Shield (per-product)
+
+- One contract per parametric product.
+- `submitTrigger(payload, signature)` — verifies EIP-712 and the
+  product-specific condition.
+- `MAX_PROOF_AGE = 86400s` (audit fix M-8).
+
+### BondVault
+
+- Holds USDC reserves backing bonds.
+- `mint(buyer, faceValue)` — called by Shields on trigger; emits `BondIssued`.
+- `redeem(epochId)` — called by bond holders at maturity; transfers USDC.
+- `availableCapacityUSD()` — uses 1-hour TWAP (audit fix M-6) instead of spot.
+- `burnFromReserves` — solvency floor 125% (audit fix M-11).
+
+### ClaimBond
+
+- ERC-1155. `tokenId == epochId`.
+- Held by buyers, transferable, listable on marketplace.
+
+### LuminaBondMarketplace
+
+- Secondary market for bonds.
+- `list(bondId, amount, totalPriceUsdc)` — anti-spam floor (audit fix M-3).
+- `buy(listingId)` — atomic purchase with race-condition protection.
+
+### LuminaOracleV2
+
+- EIP-712 signer.
+- `oracleKey()` returns the address that must produce signatures.
+- Anyone can submit a triggered proof; only the oracle's signature is trusted.
+
+### TWAPBurner V2
+
+- Auto-burn on every $500 in fees or every 50 purchases.
+- Sequential DEX fallback for resilience (audit fix M-12).
+- 1-hour TWAP swap to mitigate MEV.
+
+## Audit-fix map
+
+| Fix | Affects | Description |
+|---|---|---|
+| C-3 | BondVault | Min redeem price aligns with snapshot |
+| C-4, FIX#15 | CoverRouter | Pause registry plumbing preserved |
+| H-1 | LuminaToken | burnFrom allowance check |
+| H-5 | PolicyManager | productActive gating |
+| H-6 | PolicyManager | Snapshot LUMINA/USD on purchase |
+| M-3 | Marketplace | Anti-spam floor on `list()` |
+| M-6 | BondVault | TWAP capacity calc |
+| M-7 | CoverRouter | Global pause registry |
+| M-8 | All shields | MAX_PROOF_AGE 900 → 86400 |
+| M-9 | Vesting / payouts | MonthCalculator shared library |
+| M-10 | BuybackEngine | Commit-reveal MEV protection |
+| M-11 | BondVault | 125% solvency floor on burnFromReserves |
+| M-12 | TWAPBurner | Sequential DEX fallback + retryBurn |
+| L-2 | EpochCalculator | Drift-free preventive library |
+
+For the full audit history see [audits](/contracts/audits).

@@ -1,0 +1,63 @@
+---
+title: "Shields"
+description: "The contracts that decide whether a parametric condition fired."
+icon: "shield"
+---
+
+A **Shield** is one parametric product. Each Shield contract owns the logic
+for verifying a specific condition (e.g. "BTC dropped ≥20% in the last hour")
+and minting bonds when that condition fires.
+
+## Shape
+
+| Field | Meaning |
+|---|---|
+| `productId` (bytes32) | `keccak256(canonicalName)` — e.g. `keccak256("FLASHBTC24-001")` |
+| `payoutRatioBps` | Cents-on-the-dollar paid out when triggered (8000 = 80%) |
+| `triggerProbBps` | The probability the condition fires (drives premium pricing) |
+| `marginBps` | Safety margin built into the premium |
+| `durationSeconds` | Coverage window length |
+| `active` | Whether new policies can be purchased |
+
+Discover the live set with `GET /products` or `lumina.products.list()`.
+
+## Live products (Base Sepolia, V5.1)
+
+Each row is verified against `/products` and `keccak256(name)`.
+
+| Name | productId | Duration |
+|---|---|---|
+| `FLASHBTC1H-001` | `0xe87625ef…dfeaddd` | 1 h |
+| `FLASHBTC4H-001` | `0x0c8e45ca…a03d` | 4 h |
+| `FLASHBTC24-001` | `0xdc5bcc7d…a7b9` | 24 h |
+| `FLASHBTC48-001` | `0xb6306087…1ee8` | 48 h |
+| `FLASHETH1H-001` | `0x6cedbccf…8915` | 1 h |
+| `FLASHETH24-001` | `0xcc03aef9…f240` | 24 h |
+| `FLASHETH48-001` | `0x89a37df7…712d` | 48 h |
+| `MICRODEPEG-001` | `0x317c1a64…3640` | 7 d |
+| `RATESHOCK-001` | `0x8ae1e414…347f` | 7 d |
+
+## Verifying a productId yourself
+
+```ts
+import { keccak256, toUtf8Bytes } from 'ethers'
+keccak256(toUtf8Bytes('FLASHBTC24-001'))
+// → 0xdc5bcc7d6e2e9ca89d46d4f6672db80985d5e86509243dcca44a4e87d871a7b9
+```
+
+The productId is a hash, not an address. The 20-byte addresses you may have
+seen in old docs were a documentation bug — they're always 32 bytes.
+
+## How a Shield gates triggers
+
+Each Shield has its own [`submitTrigger(payload, signature)`](/concepts/triggers).
+The contract:
+
+1. Verifies the EIP-712 signature against the oracle's known signer.
+2. Checks the price-condition logic (different per Shield: a flash-crash check
+   for `FLASHBTC*`, a sustained-deviation check for `MICRODEPEG`, etc.).
+3. Calls `BondVault.mint(buyer, faceValue)` when the condition holds, sending
+   the buyer an ERC-1155 receipt.
+
+There is no "claim" step the buyer has to perform. Once the condition is
+proven, the bond shows up.

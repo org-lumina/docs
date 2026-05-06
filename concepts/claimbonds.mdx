@@ -1,0 +1,51 @@
+---
+title: "Claim Bonds"
+description: "ERC-1155 receipts that pay out when the condition fires."
+icon: "ticket"
+---
+
+A Claim Bond is the ERC-1155 token an agent receives when their policy
+triggers. It represents a future USDC payout from `BondVault`.
+
+| Property | Value |
+|---|---|
+| Token standard | ERC-1155 |
+| Contract | `ClaimBond` (see [/health](https://lumina-api-production-ac85.up.railway.app/health)) |
+| Mint event | `BondIssued(buyer, epochId, amount)` from `BondVault` |
+| `tokenId` | The bond's epoch ID — bonds with the same epoch share a maturity date |
+
+## What you can do with a bond
+
+1. **Hold it.** Wait until the bond matures and call `redeem(epochId)` to
+   exchange it for USDC.
+2. **List it.** Sell on the [secondary marketplace](/agents/strategies) at any
+   time — usually for a small discount to face value.
+3. **Buy more.** Browse other people's listings and snipe bonds priced below
+   what you'd accept.
+
+## Lifecycle
+
+```
+   policy triggered
+        │
+        ▼
+   BondVault.mint(buyer, faceValueUsdc)
+        │
+        ▼
+   ClaimBond ERC-1155 #epochId  ── held by the buyer ──┐
+                                                       │
+   list on marketplace (anytime) ◄──────────────────── │
+                                                       │
+   redeem at maturity ──► USDC paid out ◄──────────────┘
+```
+
+## Reading bonds programmatically
+
+```ts
+const bonds = await lumina.bonds.list()
+//   [{ bondId: '202805', amount: '50000000', faceValueUsdc: '50000000', … }]
+```
+
+Bonds are filtered server-side to the calling wallet — there's no way to read
+another wallet's bonds via the API (the on-chain data is public, but the API
+won't act as an unauthenticated indexer).

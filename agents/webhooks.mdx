@@ -1,0 +1,93 @@
+---
+title: "Webhooks"
+description: "Push notifications for policy / bond / marketplace events. HMAC-signed."
+icon: "bell"
+---
+
+Polling is wasteful. Subscribe a URL, the API will POST JSON when something
+happens.
+
+## Subscribe
+
+```ts
+const sub = await lumina.webhooks.create({
+  url: 'https://my-bot.example.com/webhooks/lumina',
+  events: ['policy_purchased', 'policy_triggered', 'bond_minted'],
+})
+console.log('STORE THIS NOW:', sub.secret)
+```
+
+The `secret` is a 32-byte hex string. **Returned exactly once.** Store it in a
+secret manager — there's no API to retrieve it later.
+
+## Available events
+
+| Event | Fires when |
+|---|---|
+| `policy_purchased` | A `purchasePolicyFor` call completes successfully |
+| `policy_triggered` | A trigger is accepted on-chain and a bond is minted |
+| `bond_minted` | Same trigger event, surfaced from the BondVault perspective |
+| `bond_redeemed` | A bond is redeemed for USDC at maturity |
+| `listing_created` | Your wallet listed a bond on the marketplace |
+| `listing_purchased` | Your listing was bought by another wallet |
+
+Use `events: '*'` to subscribe to everything for the wallet (recommended for
+new integrations).
+
+## Headers on every delivery
+
+| Header | Value |
+|---|---|
+| `Content-Type` | `application/json` |
+| `X-Lumina-Signature` | `hex(HMAC-SHA256(rawBody, secret))` |
+| `X-Lumina-Event` | The event name, e.g. `policy_purchased` |
+| `X-Lumina-Delivery` | A unique delivery ID for de-duplication |
+
+## Verifying the signature (Express example)
+
+```ts
+import crypto from 'crypto'
+import express from 'express'
+
+const app = express()
+
+// IMPORTANT: use raw body, not the JSON-parsed one — the HMAC is over the
+// exact bytes the API sent.
+app.post('/webhooks/lumina', express.raw({ type: 'application/json' }), (req, res) => {
+  const sig = req.header('X-Lumina-Signature') ?? ''
+  const expected = crypto.createHmac('sha256', process.env.LUMINA_WEBHOOK_SECRET!)
+    .update(req.body)
+    .digest('hex')
+
+  if (!crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected))) {
+    return res.status(401).send('bad signature')
+  }
+
+  const payload = JSON.parse(req.body.toString('utf8'))
+  console.log('event:', req.header('X-Lumina-Event'), payload)
+  res.sendStatus(200)
+})
+```
+
+## Delivery semantics
+
+- **Acceptance**: any 2xx response counts as delivered.
+- **4xx**: marked failed permanently (the receiver said no).
+- **5xx / network**: retried with exponential backoff (30s · 2^attempt).
+- **Max attempts**: 3 (so the longest gap from event to final failure is ~150s).
+
+The worker polls the queue every 30 seconds. Latency from event to first
+delivery attempt is therefore 0–30s.
+
+## List and revoke
+
+```ts
+const subs = await lumina.webhooks.list()    // metadata only — no secret
+await lumina.webhooks.delete(subs[0].id)     // owner-only
+```
+
+## Limits
+
+- **One URL per wallet.** Re-registering the same `(wallet, url)` pair returns 409. Delete and re-create to rotate the secret.
+- **Multiple URLs allowed.** Different URLs (e.g. dev/staging/prod) can coexist on the same wallet.
+- **HTTPS required** in production. `http://localhost` is allowed for testing.
