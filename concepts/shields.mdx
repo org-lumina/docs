@@ -23,19 +23,22 @@ Discover the live set with `GET /products` or `lumina.products.list()`.
 
 ## Live products (Base Sepolia, V5.1)
 
-Each row is verified against `/products` and `keccak256(name)`.
+Each row is verified against `/products` and `keccak256(name)`. The
+`coveredAsset` column is the asset whose price-event the Shield insures
+against — independent of the **payment asset (always USDC)**. See
+[Covered asset vs payment asset](/concepts/assets) for the distinction.
 
-| Name | productId | Duration |
-|---|---|---|
-| `FLASHBTC1H-001` | `0xe87625ef…dfeaddd` | 1 h |
-| `FLASHBTC4H-001` | `0x0c8e45ca…a03d` | 4 h |
-| `FLASHBTC24-001` | `0xdc5bcc7d…a7b9` | 24 h |
-| `FLASHBTC48-001` | `0xb6306087…1ee8` | 48 h |
-| `FLASHETH1H-001` | `0x6cedbccf…8915` | 1 h |
-| `FLASHETH24-001` | `0xcc03aef9…f240` | 24 h |
-| `FLASHETH48-001` | `0x89a37df7…712d` | 48 h |
-| `MICRODEPEG-001` | `0x317c1a64…3640` | 7 d |
-| `RATESHOCK-001` | `0x8ae1e414…347f` | 7 d |
+| Name | productId | coveredAsset | Duration |
+|---|---|---|---|
+| `FLASHBTC1H-001` | `0xe87625ef…dfeaddd` | `BTC` | 1 h |
+| `FLASHBTC4H-001` | `0x0c8e45ca…a03d` | `BTC` | 4 h |
+| `FLASHBTC24-001` | `0xdc5bcc7d…a7b9` | `BTC` | 24 h |
+| `FLASHBTC48-001` | `0xb6306087…1ee8` | `BTC` | 48 h |
+| `FLASHETH1H-001` | `0x6cedbccf…8915` | `ETH` | 1 h |
+| `FLASHETH24-001` | `0xcc03aef9…f240` | `ETH` | 24 h |
+| `FLASHETH48-001` | `0x89a37df7…712d` | `ETH` | 48 h |
+| `MICRODEPEG-001` | `0x317c1a64…3640` | `USDT` | 7 d |
+| `RATESHOCK-001` | `0x8ae1e414…347f` | `USDC` | 7 d |
 
 ## Verifying a productId yourself
 

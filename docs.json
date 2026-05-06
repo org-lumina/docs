@@ -60,6 +60,7 @@
             "pages": [
               "concepts/overview",
               "concepts/shields",
+              "concepts/assets",
               "concepts/claimbonds",
               "concepts/triggers",
               "concepts/lumina-token"

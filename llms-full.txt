@@ -175,25 +175,30 @@ Source: https://docs.lumina-org.com/concepts/overview
 
 ## Products and Assets
 
-Each shield contract validates `params.asset` against a hardcoded literal.
-Sending the wrong asset reverts with `InvalidAsset(bytes32)` even though
-the **payment token (USDC) is the same for every product**. The asset is a
-*what-it-covers* tag, not the payment token.
+Lumina distinguishes two assets per product:
 
-The bytes32 hashes below come from the live `/products` endpoint and match
-the `PRODUCT_ID` constants in each `Shield*.sol` on Base Sepolia.
+- **coveredAsset** — the asset whose price-event the policy insures
+  against. This is what each shield contract validates `params.asset`
+  against. Sending the wrong value reverts with `InvalidAsset(bytes32)`
+  (selector `0x8196d462`).
+- **paymentAsset** — the token used to pay the premium and receive
+  payouts. **Always USDC** for every product.
 
-| Product name | Expected `asset` | Shield type | Duration | productId (truncated) |
-|---|---|---|---|---|
-| `FLASHBTC1H-001` | `BTC` | Flash crash on BTC | 1 h | `0xe87625ef…dfeaddd` |
-| `FLASHBTC4H-001` | `BTC` | Flash crash on BTC | 4 h | `0x0c8e45ca…a03d` |
-| `FLASHBTC24-001` | `BTC` | Flash crash on BTC | 24 h | `0xdc5bcc7d…a7b9` |
-| `FLASHBTC48-001` | `BTC` | Flash crash on BTC | 48 h | `0xb6306087…1ee8` |
-| `FLASHETH1H-001` | `ETH` | Flash crash on ETH | 1 h | `0x6cedbccf…8915` |
-| `FLASHETH24-001` | `ETH` | Flash crash on ETH | 24 h | `0xcc03aef9…f240` |
-| `FLASHETH48-001` | `ETH` | Flash crash on ETH | 48 h | `0x89a37df7…712d` |
-| `MICRODEPEG-001` | `USDT` | Stablecoin micro-depeg | 7 d | `0x317c1a64…3640` |
-| `RATESHOCK-001` | `USDC` | Borrow-rate spike | 7 d | `0x8ae1e414…347f` |
+Both fields are exposed by `GET /products`. The bytes32 hashes below come
+from the live `/products` endpoint and match the `PRODUCT_ID` constants
+in each `Shield*.sol` on Base Sepolia.
+
+| Product name | coveredAsset | paymentAsset | Shield type | Duration | productId (truncated) |
+|---|---|---|---|---|---|
+| `FLASHBTC1H-001` | `BTC` | `USDC` | Flash crash on BTC | 1 h | `0xe87625ef…dfeaddd` |
+| `FLASHBTC4H-001` | `BTC` | `USDC` | Flash crash on BTC | 4 h | `0x0c8e45ca…a03d` |
+| `FLASHBTC24-001` | `BTC` | `USDC` | Flash crash on BTC | 24 h | `0xdc5bcc7d…a7b9` |
+| `FLASHBTC48-001` | `BTC` | `USDC` | Flash crash on BTC | 48 h | `0xb6306087…1ee8` |
+| `FLASHETH1H-001` | `ETH` | `USDC` | Flash crash on ETH | 1 h | `0x6cedbccf…8915` |
+| `FLASHETH24-001` | `ETH` | `USDC` | Flash crash on ETH | 24 h | `0xcc03aef9…f240` |
+| `FLASHETH48-001` | `ETH` | `USDC` | Flash crash on ETH | 48 h | `0x89a37df7…712d` |
+| `MICRODEPEG-001` | `USDT` | `USDC` | Stablecoin micro-depeg | 7 d | `0x317c1a64…3640` |
+| `RATESHOCK-001` | `USDC` | `USDC` | Borrow-rate spike on Aave V3 | 7 d | `0x8ae1e414…347f` |
 
 ### Recommended pattern: pass `productName`
 
@@ -219,8 +224,9 @@ const policy = await lumina.policies.purchase({
 | `ProductNotConfigured` | productId hash doesn't exist on-chain | Verify the keccak256 preimage matches a canonical name |
 | `InvalidCoverage` | Below `$100` minimum (`MIN_PRICE_FOR_NEW_POLICIES`) | Increase `coverageAmount` to ≥ `100000000` |
 
-Source: https://docs.lumina-org.com/agents/products-and-assets and
-https://docs.lumina-org.com/concepts/shields
+Source: https://docs.lumina-org.com/agents/products-and-assets,
+https://docs.lumina-org.com/concepts/shields, and
+https://docs.lumina-org.com/concepts/assets (covered vs payment asset)
 
 ---
 
@@ -331,7 +337,10 @@ Body fields:
 - **`productId`** — bytes32 hash. Optional alternative to `productName`.
 - **`coverageAmount`** — string of USDC base units. `$50 = "50000000"`.
 - **`asset`** — bytes32 of asset symbol. **Optional** — auto-resolved from
-  the registry. Sending the wrong one reverts `InvalidAsset(bytes32)`.
+  the registry. Must equal the product's `coveredAsset` (NOT the USDC
+  payment token). Sending the wrong value reverts `InvalidAsset(bytes32)`
+  (selector `0x8196d462`). See
+  https://docs.lumina-org.com/concepts/assets for the distinction.
 - **`buyer`** — wallet that pays USDC premium. Must hold ≥ premium and
   have approved the relayer-side spender.
 
@@ -758,6 +767,7 @@ Source: https://docs.lumina-org.com/status
 - Webhooks: https://docs.lumina-org.com/agents/webhooks
 - How Lumina works: https://docs.lumina-org.com/concepts/overview
 - Shields: https://docs.lumina-org.com/concepts/shields
+- Covered vs payment asset: https://docs.lumina-org.com/concepts/assets
 - Triggers: https://docs.lumina-org.com/concepts/triggers
 - Claim Bonds: https://docs.lumina-org.com/concepts/claimbonds
 - Deployed contracts: https://docs.lumina-org.com/contracts/deployed

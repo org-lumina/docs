@@ -62,7 +62,7 @@ curl -X POST https://lumina-api-production-ac85.up.railway.app/api/v1/policies \
 - **`productName`** — canonical name (`FLASHBTC24-001`, `MICRODEPEG-001`, …). Preferred input — the API resolves both the `productId` hash AND the per-shield `asset` literal from it. See [Products and assets](/agents/products-and-assets) for the registered set.
 - **`productId`** — bytes32 hash. Optional alternative to `productName`. Compute as `keccak256(toUtf8Bytes('FLASHBTC24-001'))`. Pre-computed values are listed in [Shields](/concepts/shields).
 - **`coverageAmount`** — string of USDC base units. $50 = `"50000000"`. Always pass as a string to preserve precision.
-- **`asset`** — bytes32 of the asset symbol. **Optional** — the API auto-resolves the per-shield literal when omitted. Each shield expects a specific value (`BTC` for FlashBTC, `ETH` for FlashETH, `USDT` for MicroDepeg, `USDC` for RateShock); sending the wrong one reverts with `InvalidAsset(bytes32)`.
+- **`asset`** — bytes32 of the asset symbol. **Optional** — the API auto-resolves the per-shield literal when omitted. This must equal the product's `coveredAsset` (now exposed on `GET /products`) — *not* the USDC payment token. Each shield expects a specific value (`BTC` for FlashBTC, `ETH` for FlashETH, `USDT` for MicroDepeg, `USDC` for RateShock); sending the wrong one reverts with `InvalidAsset(bytes32)` (selector `0x8196d462`). See [Covered asset vs payment asset](/concepts/assets) for the distinction.
 - **`buyer`** — the wallet that pays the USDC premium (NOT the relayer). Must hold ≥ premium and have approved the relayer-side spender.
 
 ## Idempotency

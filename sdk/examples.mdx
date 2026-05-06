@@ -21,7 +21,6 @@ console.log('keyId:', result.keyId)
 ## Buy a policy with retry-on-network-blip
 
 ```ts
-import { keccak256, toUtf8Bytes } from 'ethers'
 import { LuminaClient, LuminaError } from '@lumina-org/sdk'
 import { randomUUID } from 'crypto'
 
@@ -32,10 +31,9 @@ async function buyOnce(): Promise<string> {
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
       const r = await lumina.policies.purchase({
-        productId: keccak256(toUtf8Bytes('FLASHBTC24-001')),
+        productName: 'FLASHBTC24-001',  // SDK auto-resolves productId hash + asset='BTC'
         buyer: process.env.BUYER!,
-        coverageAmount: '50000000',
-        asset: 'USDC',
+        coverageAmount: '50000000',     // $50 in 6-dec USDC (payment asset)
         idempotencyKey,
       })
       return r.policyId
