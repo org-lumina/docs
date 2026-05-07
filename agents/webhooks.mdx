@@ -4,6 +4,10 @@ description: "Push notifications for policy / bond / marketplace events. HMAC-si
 icon: "bell"
 ---
 
+<Note>
+  See [/concepts/lifecycle](/concepts/lifecycle) for the end-to-end flow (policy → trigger → bond → wait/sell decision).
+</Note>
+
 Polling is wasteful. Subscribe a URL, the API will POST JSON when something
 happens.
 
@@ -27,7 +31,7 @@ secret manager — there's no API to retrieve it later.
 | `policy_purchased` | A `purchasePolicyFor` call completes successfully |
 | `policy_triggered` | A trigger is accepted on-chain and a bond is minted |
 | `bond_minted` | Same trigger event, surfaced from the BondVault perspective |
-| `bond_redeemed` | A bond is redeemed for USDC at maturity |
+| `bond_redeemed` | A bond is **redeemed for $LUMINA** at maturity |
 | `listing_created` | Your wallet listed a bond on the marketplace |
 | `listing_purchased` | Your listing was bought by another wallet |
 
