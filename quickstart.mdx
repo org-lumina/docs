@@ -1,6 +1,6 @@
 ---
 title: "5-minute quickstart"
-description: "Install the SDK, mint your first API key, buy a $50 policy."
+description: "Install the SDK, mint your first API key, buy a $100 policy."
 icon: "rocket"
 ---
 
@@ -43,13 +43,13 @@ console.log('chainId:', health.chain.chainId)              // 84532
 console.log('contracts:', Object.keys(health.contracts))   // coverRouter, …
 ```
 
-## 4. Buy a $50 policy
+## 4. Buy a $100 policy
 
 ```ts
 const policy = await lumina.policies.purchase({
   productName: 'FLASHBTC1H-001',                // SDK 0.3.0+ auto-resolves productId hash + asset='BTC'
   buyer: '0xYourWalletAddress',                 // wallet that pays USDC premium
-  coverageAmount: '50000000',                   // $50 in 6-dec USDC
+  coverageAmount: '100000000',                  // $100 in 6-dec USDC (on-chain minimum)
 })
 
 console.log('policyId:', policy.policyId, 'tx:', policy.txHash)

@@ -33,7 +33,7 @@ async function buyOnce(): Promise<string> {
       const r = await lumina.policies.purchase({
         productName: 'FLASHBTC24-001',  // SDK auto-resolves productId hash + asset='BTC'
         buyer: process.env.BUYER!,
-        coverageAmount: '50000000',     // $50 in 6-dec USDC (payment asset)
+        coverageAmount: '100000000',    // $100 in 6-dec USDC (on-chain minimum)
         idempotencyKey,
       })
       return r.policyId

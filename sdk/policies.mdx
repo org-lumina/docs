@@ -33,7 +33,7 @@ SDK 0.3.0+ auto-resolves both the `productId` keccak hash AND the per-shield
 const receipt = await lumina.policies.purchase({
   productName: 'FLASHBTC1H-001',  // resolves productId + asset='BTC'
   buyer: '0x…',
-  coverageAmount: '50000000',     // string of USDC base units
+  coverageAmount: '100000000',    // string of USDC base units; minimum $100 on-chain
   idempotencyKey: 'uuid-v4',      // optional but recommended
 })
 ```
@@ -45,7 +45,7 @@ reverse-lookup against the canonical registry:
 const receipt = await lumina.policies.purchase({
   productId: '0xe87625ef…',       // FLASHBTC1H-001 hash
   buyer: '0x…',
-  coverageAmount: '50000000',
+  coverageAmount: '100000000',
 })
 ```
 
@@ -58,8 +58,8 @@ Returns:
   policyId: '7',
   buyer: '0x…',
   productId: '0x…',
-  coverageAmount: '50000000',
-  premiumPaid: '450000',         // 6-dec USDC base units
+  coverageAmount: '100000000',
+  premiumPaid: '900000',         // 6-dec USDC base units (~0.9% of coverage)
 }
 ```
 
