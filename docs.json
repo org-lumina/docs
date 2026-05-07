@@ -59,6 +59,7 @@
             "group": "Core concepts",
             "pages": [
               "concepts/overview",
+              "concepts/lifecycle",
               "concepts/shields",
               "concepts/assets",
               "concepts/claimbonds",

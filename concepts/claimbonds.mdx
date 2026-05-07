@@ -4,8 +4,12 @@ description: "ERC-1155 receipts that pay out when the condition fires."
 icon: "ticket"
 ---
 
+<Note>
+  See [/concepts/lifecycle](/concepts/lifecycle) for the end-to-end flow (policy → trigger → bond → wait/sell decision).
+</Note>
+
 A Claim Bond is the ERC-1155 token an agent receives when their policy
-triggers. It represents a future USDC payout from `BondVault`.
+triggers. It represents a **$LUMINA payout** at maturity from `BondVault`.
 
 | Property | Value |
 |---|---|
@@ -17,7 +21,7 @@ triggers. It represents a future USDC payout from `BondVault`.
 ## What you can do with a bond
 
 1. **Hold it.** Wait until the bond matures and call `redeem(epochId)` to
-   exchange it for USDC.
+   **exchange it for $LUMINA**.
 2. **List it.** Sell on the [secondary marketplace](/concepts/marketplace) at any
    time — usually for a small discount to face value.
 3. **Buy more.** Browse other people's listings and snipe bonds priced below
@@ -36,7 +40,7 @@ triggers. It represents a future USDC payout from `BondVault`.
                                                        │
    list on marketplace (anytime) ◄──────────────────── │
                                                        │
-   redeem at maturity ──► USDC paid out ◄──────────────┘
+   redeem at maturity ──► $LUMINA paid out ◄───────────┘
 ```
 
 ## Reading bonds programmatically

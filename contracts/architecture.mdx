@@ -4,6 +4,10 @@ description: "How the contracts fit together."
 icon: "diagram-project"
 ---
 
+<Note>
+  See [/concepts/lifecycle](/concepts/lifecycle) for the end-to-end flow (policy → trigger → bond → wait/sell decision).
+</Note>
+
 ## High-level
 
 ```
@@ -16,7 +20,7 @@ icon: "diagram-project"
                                                      BondVault ──► ClaimBond ERC-1155
                                                         │
                                                         ▼ on redemption
-                                                     USDC ──► holder
+                                                     $LUMINA ──► holder
 ```
 
 ## Contracts
@@ -47,7 +51,7 @@ icon: "diagram-project"
 
 - Holds USDC reserves backing bonds.
 - `mint(buyer, faceValue)` — called by Shields on trigger; emits `BondIssued`.
-- `redeem(epochId)` — called by bond holders at maturity; transfers USDC.
+- `redeem(epochId)` — called by bond holders at maturity; **mints $LUMINA**.
 - `availableCapacityUSD()` — uses 1-hour TWAP (audit fix M-6) instead of spot.
 - `burnFromReserves` — solvency floor 125% (audit fix M-11).
 

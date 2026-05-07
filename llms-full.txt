@@ -6,7 +6,7 @@
 > summary of the Lumina docs. Source pages live at
 > https://docs.lumina-org.com.
 >
-> Build trigger: 2026-05-06 v3 (cache-bust to force Mintlify rebuild).
+> Build trigger: 2026-05-06 v4 (cache-bust to force Mintlify rebuild).
 > Last updated: 2026-05-06
 
 ---
@@ -24,8 +24,8 @@ typical DeFi:
   `purchasePolicyFor` on behalf of the buyer; the agent only holds USDC for
   premiums.
 - **Fair payouts.** Triggers come from a signed off-chain oracle and pay out
-  as ERC-1155 bonds the agent can hold, redeem at maturity, or sell on a
-  secondary marketplace.
+  as ERC-1155 bonds the agent can hold, redeem at maturity for **$LUMINA**,
+  or sell on a secondary marketplace.
 
 Source: https://docs.lumina-org.com
 
@@ -168,7 +168,7 @@ verb on one of these nouns.
 | Shield | A specific parametric product (e.g. "BTC drops 20% in 1h"). Each Shield is its own contract; `Shield.submitTrigger(...)` accepts an EIP-712 signed price proof from the oracle and decides whether the condition is met. |
 | Policy | The buyer's coverage. Stored in `PolicyManagerV2`, indexed by `(productId, policyId)`. Each policy snapshots the LUMINA/USD price at purchase time so payouts use a price the buyer accepted. |
 | Trigger | The off-chain oracle's claim that the condition fired, signed with EIP-712. Anyone can submit it; the Shield verifies and only mints the bond if the condition holds. |
-| Claim Bond | The payout. ERC-1155 token issued by `BondVault`. The agent can hold it, redeem it for USDC at maturity, or list it on the secondary marketplace. |
+| Claim Bond | The payout. ERC-1155 token issued by `BondVault`. The agent can hold it, redeem it for **$LUMINA** at maturity, or list it on the secondary marketplace. |
 
 Source: https://docs.lumina-org.com/concepts/overview
 
@@ -580,7 +580,7 @@ secret manager — there is no API to retrieve it later.
 | `policy_purchased` | A `purchasePolicyFor` call completes successfully |
 | `policy_triggered` | A trigger is accepted on-chain and a bond is minted |
 | `bond_minted` | Same trigger event, surfaced from the BondVault perspective |
-| `bond_redeemed` | A bond is redeemed for USDC at maturity |
+| `bond_redeemed` | A bond is redeemed for **$LUMINA** at maturity |
 | `listing_created` | Your wallet listed a bond on the marketplace |
 | `listing_purchased` | Your listing was bought by another wallet |
 
@@ -677,7 +677,7 @@ The ERC-1155 token issued by `BondVault` when a Shield triggers. Three
 things you can do with it:
 
 1. **Hold and redeem.** Wait until maturity, call `BondVault.redeem(epochId)`
-   to exchange for USDC.
+   to **exchange for $LUMINA**.
 2. **List on the marketplace.** Sell at any time, usually for a small
    discount to face value.
 3. **Buy more.** Snipe other people's listings priced below face value.

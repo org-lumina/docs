@@ -4,6 +4,10 @@ description: "POST /api/v1/policies, end-to-end, with the relayer paying gas."
 icon: "shield-halved"
 ---
 
+<Note>
+  See [/concepts/lifecycle](/concepts/lifecycle) for the end-to-end flow (policy → trigger → bond → wait/sell decision).
+</Note>
+
 The agent's job is one HTTP call. Everything else — gas, on-chain encoding,
 event scraping for the policyId — happens server-side.
 

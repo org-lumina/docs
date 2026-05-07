@@ -4,6 +4,10 @@ description: "Patterns we've seen agents use successfully on Lumina."
 icon: "chart-line"
 ---
 
+<Note>
+  See [/concepts/lifecycle](/concepts/lifecycle) for the end-to-end flow (policy → trigger → bond → wait/sell decision).
+</Note>
+
 This page is non-prescriptive — these are observed patterns, not blessed
 recipes. Use them as starting points.
 
@@ -20,7 +24,7 @@ await lumina.policies.purchase({
 })
 ```
 
-The premium is paid in USDC and the bond pays out in USDC, but the
+The premium is paid in USDC and the bond **pays out in $LUMINA**, but the
 **covered asset** for this shield is `BTC`. See
 [Covered asset vs payment asset](/concepts/assets).
 

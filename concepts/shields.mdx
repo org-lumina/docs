@@ -4,6 +4,10 @@ description: "The contracts that decide whether a parametric condition fired."
 icon: "shield"
 ---
 
+<Note>
+  See [/concepts/lifecycle](/concepts/lifecycle) for the end-to-end flow (policy → trigger → bond → wait/sell decision).
+</Note>
+
 A **Shield** is one parametric product. Each Shield contract owns the logic
 for verifying a specific condition (e.g. "BTC dropped ≥20% in the last hour")
 and minting bonds when that condition fires.
